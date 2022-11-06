@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _ITEMPROTOTYPE_H
@@ -49,9 +60,9 @@ enum ItemModType
     ITEM_MOD_EXPERTISE_RATING         = 37,
     ITEM_MOD_ATTACK_POWER             = 38,
     ITEM_MOD_RANGED_ATTACK_POWER      = 39,
-    //ITEM_MOD_FERAL_ATTACK_POWER       = 40, not in 3.3
-    ITEM_MOD_SPELL_HEALING_DONE       = 41,                 // deprecated
-    ITEM_MOD_SPELL_DAMAGE_DONE        = 42,                 // deprecated
+    //ITEM_MOD_FERAL_ATTACK_POWER     = 40, not in 3.3
+    ITEM_MOD_SPELL_HEALING_DONE       = 41, // deprecated
+    ITEM_MOD_SPELL_DAMAGE_DONE        = 42, // deprecated
     ITEM_MOD_MANA_REGENERATION        = 43,
     ITEM_MOD_ARMOR_PENETRATION_RATING = 44,
     ITEM_MOD_SPELL_POWER              = 45,
@@ -64,7 +75,7 @@ enum ItemModType
 
 enum ItemSpelltriggerType
 {
-    ITEM_SPELLTRIGGER_ON_USE          = 0,                  // use after equip cooldown
+    ITEM_SPELLTRIGGER_ON_USE          = 0,  // use after equip cooldown
     ITEM_SPELLTRIGGER_ON_EQUIP        = 1,
     ITEM_SPELLTRIGGER_CHANCE_ON_HIT   = 2,
     ITEM_SPELLTRIGGER_SOULSTONE       = 4,
@@ -74,20 +85,20 @@ enum ItemSpelltriggerType
      * other hand the item is destroyed if the aura is removed ("removed on
      * death" of spell 57348 makes me think so)
      */
-    ITEM_SPELLTRIGGER_ON_NO_DELAY_USE = 5,                  // no equip cooldown
-    ITEM_SPELLTRIGGER_LEARN_SPELL_ID  = 6                   // used in item_template.spell_2 with spell_id with SPELL_GENERIC_LEARN in spell_1
+    ITEM_SPELLTRIGGER_ON_NO_DELAY_USE = 5,  // no equip cooldown
+    ITEM_SPELLTRIGGER_LEARN_SPELL_ID  = 6   // used in item_template.spell_2 with spell_id with SPELL_GENERIC_LEARN in spell_1
 };
 
 #define MAX_ITEM_SPELLTRIGGER           7
 
 enum ItemBondingType
 {
-    NO_BIND                                     = 0,
-    BIND_WHEN_PICKED_UP                         = 1,
-    BIND_WHEN_EQUIPED                           = 2,
-    BIND_WHEN_USE                               = 3,
-    BIND_QUEST_ITEM                             = 4,
-    BIND_QUEST_ITEM1                            = 5         // not used in game
+    NO_BIND                           = 0,
+    BIND_WHEN_PICKED_UP               = 1,
+    BIND_WHEN_EQUIPED                 = 2,
+    BIND_WHEN_USE                     = 3,
+    BIND_QUEST_ITEM                   = 4,
+    BIND_QUEST_ITEM1                  = 5                   // not used in game
 };
 
 #define MAX_BIND_TYPE                             6
@@ -586,7 +597,7 @@ struct _ItemStat
 };
 struct _Spell
 {
-    int32 SpellId;                                         // id from Spell.dbc
+    int32 SpellId;                                          // id from Spell.dbc
     uint32 SpellTrigger;
     int32  SpellCharges;
     float  SpellPPMRate;
@@ -648,12 +659,12 @@ struct ItemTemplate
     uint32 ScalingStatValue;                                // mask for selecting column in ScalingStatValues.dbc
     _Damage Damage[MAX_ITEM_PROTO_DAMAGES];
     uint32 Armor;
-    uint32 HolyRes;
-    uint32 FireRes;
-    uint32 NatureRes;
-    uint32 FrostRes;
-    uint32 ShadowRes;
-    uint32 ArcaneRes;
+    int32 HolyRes;
+    int32 FireRes;
+    int32 NatureRes;
+    int32 FrostRes;
+    int32 ShadowRes;
+    int32 ArcaneRes;
     uint32 Delay;
     uint32 AmmoType;
     float  RangedModRange;
@@ -690,7 +701,7 @@ struct ItemTemplate
     uint32 MinMoneyLoot;
     uint32 MaxMoneyLoot;
     uint32 FlagsCu;
-    WorldPacket queryData; // pussywizard
+    WorldPacket queryData;                                  // pussywizard
 
     // helpers
     [[nodiscard]] bool HasSignature() const

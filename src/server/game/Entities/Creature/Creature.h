@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef AZEROTHCORE_CREATURE_H
@@ -58,16 +69,21 @@ public:
     void GetRespawnPosition(float& x, float& y, float& z, float* ori = nullptr, float* dist = nullptr) const;
 
     void SetCorpseDelay(uint32 delay) { m_corpseDelay = delay; }
+    void SetCorpseRemoveTime(uint32 delay);
     [[nodiscard]] uint32 GetCorpseDelay() const { return m_corpseDelay; }
     [[nodiscard]] bool IsRacialLeader() const { return GetCreatureTemplate()->RacialLeader; }
     [[nodiscard]] bool IsCivilian() const { return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_CIVILIAN; }
     [[nodiscard]] bool IsTrigger() const { return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_TRIGGER; }
     [[nodiscard]] bool IsGuard() const { return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_GUARD; }
-    [[nodiscard]] bool CanWalk() const { return GetCreatureTemplate()->InhabitType & INHABIT_GROUND; }
+    CreatureMovementData const& GetMovementTemplate() const;
+    [[nodiscard]] bool CanWalk() const { return GetMovementTemplate().IsGroundAllowed(); }
     [[nodiscard]] bool CanSwim() const override;
     [[nodiscard]] bool CanEnterWater() const override;
-    [[nodiscard]] bool CanFly()  const override;
-    [[nodiscard]] bool CanHover() const { return m_originalAnimTier & UNIT_BYTE1_FLAG_HOVER || IsHovering(); }
+    [[nodiscard]] bool CanFly()  const override { return GetMovementTemplate().IsFlightAllowed() || IsFlying(); }
+    [[nodiscard]] bool CanHover() const { return GetMovementTemplate().Ground == CreatureGroundMovementType::Hover || IsHovering(); }
+
+    MovementGeneratorType GetDefaultMovementType() const override { return m_defaultMovementType; }
+    void SetDefaultMovementType(MovementGeneratorType mgt) { m_defaultMovementType = mgt; }
 
     void SetReactState(ReactStates st) { m_reactState = st; }
     [[nodiscard]] ReactStates GetReactState() const { return m_reactState; }
@@ -80,7 +96,7 @@ public:
     [[nodiscard]] bool IsValidTrainerForPlayer(Player* player, uint32* npcFlags = nullptr) const;
     bool CanCreatureAttack(Unit const* victim, bool skipDistCheck = false) const;
     void LoadSpellTemplateImmunity();
-    bool IsImmunedToSpell(SpellInfo const* spellInfo) override;
+    bool IsImmunedToSpell(SpellInfo const* spellInfo, Spell const* spell = nullptr) override;
 
     [[nodiscard]] bool HasMechanicTemplateImmunity(uint32 mask) const;
     // redefine Unit::IsImmunedToSpell
@@ -118,12 +134,12 @@ public:
     [[nodiscard]] CreatureAI* AI() const { return (CreatureAI*)i_AI; }
 
     bool SetWalk(bool enable) override;
-    bool SetDisableGravity(bool disable, bool packetOnly = false) override;
+    bool SetDisableGravity(bool disable, bool packetOnly = false, bool updateAnimationTier = true) override;
     bool SetSwim(bool enable) override;
     bool SetCanFly(bool enable, bool packetOnly = false) override;
     bool SetWaterWalking(bool enable, bool packetOnly = false) override;
     bool SetFeatherFall(bool enable, bool packetOnly = false) override;
-    bool SetHover(bool enable, bool packetOnly = false) override;
+    bool SetHover(bool enable, bool packetOnly = false, bool updateAnimationTier = true) override;
     bool HasSpellFocus(Spell const* focusSpell = nullptr) const;
 
     struct
@@ -139,7 +155,7 @@ public:
         return (getLevel() / 2 + uint32(GetStat(STAT_STRENGTH) / 20));
     }
 
-    [[nodiscard]] SpellSchoolMask GetMeleeDamageSchoolMask() const override { return m_meleeDamageSchoolMask; }
+    [[nodiscard]] SpellSchoolMask GetMeleeDamageSchoolMask(WeaponAttackType /*attackType*/ = BASE_ATTACK, uint8 /*damageIndex*/ = 0) const override { return m_meleeDamageSchoolMask; }
     void SetMeleeDamageSchool(SpellSchools school) { m_meleeDamageSchoolMask = SpellSchoolMask(1 << school); }
 
     void _AddCreatureSpellCooldown(uint32 spell_id, uint16 categoryId, uint32 end_time);
@@ -152,8 +168,9 @@ public:
     [[nodiscard]] bool HasSpell(uint32 spellID) const override;
 
     void UpdateMovementFlags();
-
-    bool UpdateEntry(uint32 entry, const CreatureData* data = nullptr, bool changelevel = true );
+    uint32 GetRandomId(uint32 id1, uint32 id2, uint32 id3);
+    bool UpdateEntry(uint32 entry, const CreatureData* data = nullptr, bool changelevel = true, bool updateAI = false);
+    bool UpdateEntry(uint32 entry, bool updateAI) { return UpdateEntry(entry, nullptr, true, updateAI); }
     bool UpdateStats(Stats stat) override;
     bool UpdateAllStats() override;
     void UpdateResistances(uint32 school) override;
@@ -161,7 +178,7 @@ public:
     void UpdateMaxHealth() override;
     void UpdateMaxPower(Powers power) override;
     void UpdateAttackPowerAndDamage(bool ranged = false) override;
-    void CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bool addTotalPct, float& minDamage, float& maxDamage) override;
+    void CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, bool addTotalPct, float& minDamage, float& maxDamage, uint8 damageIndex) override;
 
     void SetCanDualWield(bool value) override;
     [[nodiscard]] int8 GetOriginalEquipmentId() const { return m_originalEquipmentId; }
@@ -181,7 +198,7 @@ public:
     void SetDetectionDistance(float dist){ m_detectionDistance = dist; }
     [[nodiscard]] CreatureAddon const* GetCreatureAddon() const;
 
-    [[nodiscard]] std::string GetAIName() const;
+    [[nodiscard]] std::string const& GetAIName() const;
     [[nodiscard]] std::string GetScriptName() const;
     [[nodiscard]] uint32 GetScriptId() const;
 
@@ -204,8 +221,8 @@ public:
     [[nodiscard]] Group* GetLootRecipientGroup() const;
     [[nodiscard]] bool hasLootRecipient() const { return m_lootRecipient || m_lootRecipientGroup; }
     bool isTappedBy(Player const* player) const;                          // return true if the creature is tapped by the player or a member of his party.
-    [[nodiscard]] bool CanGeneratePickPocketLoot() const { return lootPickPocketRestoreTime == 0 || lootPickPocketRestoreTime < time(nullptr); }
-    void SetPickPocketLootTime() { lootPickPocketRestoreTime = time(nullptr) + MINUTE + GetCorpseDelay() + GetRespawnTime(); }
+    [[nodiscard]] bool CanGeneratePickPocketLoot() const;
+    void SetPickPocketLootTime();
     void ResetPickPocketLootTime() { lootPickPocketRestoreTime = 0; }
 
     void SetLootRecipient (Unit* unit, bool withGroup = true);
@@ -236,33 +253,30 @@ public:
     [[nodiscard]] Unit* SelectNearestTargetInAttackDistance(float dist) const;
 
     void DoFleeToGetAssistance();
-    void CallForHelp(float fRadius);
-    void CallAssistance();
+    void CallForHelp(float fRadius, Unit* target = nullptr);
+    void CallAssistance(Unit* target = nullptr);
     void SetNoCallAssistance(bool val) { m_AlreadyCallAssistance = val; }
     void SetNoSearchAssistance(bool val) { m_AlreadySearchedAssistance = val; }
     bool HasSearchedAssistance() { return m_AlreadySearchedAssistance; }
-    bool CanAssistTo(const Unit* u, const Unit* enemy, bool checkfaction = true) const;
-    bool _IsTargetAcceptable(const Unit* target) const;
-    bool CanIgnoreFeignDeath() const { return (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_IGNORE_FEIGN_DEATH) != 0; }
-    bool _CanDetectFeignDeathOf(const Unit* target) const; // pussywizard
+    bool CanAssistTo(Unit const* u, Unit const* enemy, bool checkfaction = true) const;
+    bool _IsTargetAcceptable(Unit const* target) const;
+    [[nodiscard]] bool CanIgnoreFeignDeath() const { return (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_IGNORE_FEIGN_DEATH) != 0; }
 
     // pussywizard: updated at faction change, disable move in line of sight if actual faction is not hostile to anyone
     void UpdateMoveInLineOfSightState();
     bool IsMoveInLineOfSightDisabled() { return m_moveInLineOfSightDisabled; }
     bool IsMoveInLineOfSightStrictlyDisabled() { return m_moveInLineOfSightStrictlyDisabled; }
 
-    [[nodiscard]] MovementGeneratorType GetDefaultMovementType() const { return m_defaultMovementType; }
-    void SetDefaultMovementType(MovementGeneratorType mgt) { m_defaultMovementType = mgt; }
-
     void RemoveCorpse(bool setSpawnTime = true, bool skipVisibility = false);
 
-    void DespawnOrUnsummon(uint32 msTimeToDespawn = 0);
+    void DespawnOrUnsummon(Milliseconds msTimeToDespawn, Seconds forcedRespawnTimer);
+    void DespawnOrUnsummon(uint32 msTimeToDespawn = 0) { DespawnOrUnsummon(Milliseconds(msTimeToDespawn), 0s); };
     void DespawnOnEvade();
     void RespawnOnEvade();
 
     [[nodiscard]] time_t const& GetRespawnTime() const { return m_respawnTime; }
     [[nodiscard]] time_t GetRespawnTimeEx() const;
-    void SetRespawnTime(uint32 respawn) { m_respawnTime = respawn ? time(nullptr) + respawn : 0; }
+    void SetRespawnTime(uint32 respawn);
     void Respawn(bool force = false);
     void SaveRespawnTime() override;
 
@@ -271,6 +285,8 @@ public:
 
     [[nodiscard]] float GetWanderDistance() const { return m_wanderDistance; }
     void SetWanderDistance(float dist) { m_wanderDistance = dist; }
+
+    void DoImmediateBoundaryCheck() { m_boundaryCheckTime = 0; }
 
     uint32 m_groupLootTimer;                            // (msecs)timer used for group loot
     uint32 lootingGroupLowGUID;                         // used to find group which is looting corpse
@@ -284,6 +300,7 @@ public:
 
     bool isRegeneratingHealth() { return m_regenHealth; }
     void SetRegeneratingHealth(bool c) { m_regenHealth = c; }
+    void SetRegeneratingPower(bool c) { m_regenPower = c; }
     [[nodiscard]] virtual uint8 GetPetAutoSpellSize() const { return MAX_SPELL_CHARM; }
     [[nodiscard]] virtual uint32 GetPetAutoSpellOnPos(uint8 pos) const
     {
@@ -293,10 +310,9 @@ public:
             return m_charmInfo->GetCharmSpell(pos)->GetAction();
     }
 
-    void SetCannotReachTarget(bool cannotReach);
-    [[nodiscard]] bool CanNotReachTarget() const { return m_cannotReachTarget; }
-    [[nodiscard]] bool IsNotReachable() const { return (m_cannotReachTimer >= (sWorld->getIntConfig(CONFIG_NPC_EVADE_IF_NOT_REACHABLE) * IN_MILLISECONDS)) && m_cannotReachTarget; }
-    [[nodiscard]] bool IsNotReachableAndNeedRegen() const { return (m_cannotReachTimer >= (sWorld->getIntConfig(CONFIG_NPC_REGEN_TIME_IF_NOT_REACHABLE_IN_RAID) * IN_MILLISECONDS)) && m_cannotReachTarget; }
+    void SetCannotReachTarget(ObjectGuid const& target = ObjectGuid::Empty);
+    [[nodiscard]] bool CanNotReachTarget() const;
+    [[nodiscard]] bool IsNotReachableAndNeedRegen() const;
 
     void SetPosition(float x, float y, float z, float o);
     void SetPosition(const Position& pos) { SetPosition(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation()); }
@@ -318,21 +334,18 @@ public:
     void UpdateWaypointID(uint32 wpID) { m_waypointID = wpID; }
 
     void SearchFormation();
-    [[nodiscard]] CreatureGroup* GetFormation() const { return m_formation; }
+    [[nodiscard]] CreatureGroup const* GetFormation() const { return m_formation; }
+    [[nodiscard]] CreatureGroup* GetFormation() { return m_formation; }
     void SetFormation(CreatureGroup* formation) { m_formation = formation; }
 
     Unit* SelectVictim();
 
     void SetDisableReputationGain(bool disable) { DisableReputationGain = disable; }
     [[nodiscard]] bool IsReputationGainDisabled() const { return DisableReputationGain; }
-    [[nodiscard]] bool IsDamageEnoughForLootingAndReward() const { return (m_creatureInfo->flags_extra & CREATURE_FLAG_EXTRA_NO_PLAYER_DAMAGE_REQ) || (m_PlayerDamageReq == 0); }
-    void LowerPlayerDamageReq(uint32 unDamage)
-    {
-        if (m_PlayerDamageReq)
-            m_PlayerDamageReq > unDamage ? m_PlayerDamageReq -= unDamage : m_PlayerDamageReq = 0;
-    }
-    void ResetPlayerDamageReq() { m_PlayerDamageReq = GetHealth() / 2; }
-    uint32 m_PlayerDamageReq;
+    [[nodiscard]] bool IsDamageEnoughForLootingAndReward() const;
+    void LowerPlayerDamageReq(uint32 unDamage, bool damagedByPlayer = true);
+    void ResetPlayerDamageReq();
+    [[nodiscard]] uint32 GetPlayerDamageReq() const;
 
     [[nodiscard]] uint32 GetOriginalEntry() const { return m_originalEntry; }
     void SetOriginalEntry(uint32 entry) { m_originalEntry = entry; }
@@ -347,7 +360,7 @@ public:
     void SetTarget(ObjectGuid guid = ObjectGuid::Empty) override;
     void FocusTarget(Spell const* focusSpell, WorldObject const* target);
     void ReleaseFocus(Spell const* focusSpell);
-    bool IsMovementPreventedByCasting() const;
+    [[nodiscard]] bool IsMovementPreventedByCasting() const override;
 
     // Part of Evade mechanics
     [[nodiscard]] time_t GetLastDamagedTime() const;
@@ -361,13 +374,17 @@ public:
     uint32 m_moveCircleMovementTime = MOVE_CIRCLE_CHECK_INTERVAL;
     uint32 m_moveBackwardsMovementTime = MOVE_BACKWARDS_CHECK_INTERVAL;
 
-    bool HasSwimmingFlagOutOfCombat() const
+    [[nodiscard]] bool HasSwimmingFlagOutOfCombat() const
     {
         return !_isMissingSwimmingFlagOutOfCombat;
     }
     void RefreshSwimmingFlag(bool recheck = false);
 
     void SetAssistanceTimer(uint32 value) { m_assistanceTimer = value; }
+
+    void ModifyThreatPercentTemp(Unit* victim, int32 percent, Milliseconds duration);
+
+    std::string GetDebugInfo() const override;
 
 protected:
     bool CreateFromProto(ObjectGuid::LowType guidlow, uint32 Entry, uint32 vehId, const CreatureData* data = nullptr);
@@ -382,12 +399,13 @@ protected:
     ObjectGuid::LowType m_lootRecipientGroup;
 
     /// Timers
-    time_t m_corpseRemoveTime;                          // (msecs)timer for death or corpse disappearance
+    time_t m_corpseRemoveTime;                          // (secs) timer for death or corpse disappearance
     time_t m_respawnTime;                               // (secs) time of next respawn
     time_t m_respawnedTime;                             // (secs) time when creature respawned
     uint32 m_respawnDelay;                              // (secs) delay between corpse disappearance and respawning
     uint32 m_corpseDelay;                               // (secs) delay between death and corpse disappearance
     float m_wanderDistance;
+    uint32 m_boundaryCheckTime;                         // (msecs) remaining time for next evade boundary check
     uint16 m_transportCheckTimer;
     uint32 lootPickPocketRestoreTime;
 
@@ -399,11 +417,10 @@ protected:
     uint8 m_equipmentId;
     int8 m_originalEquipmentId; // can be -1
 
-    uint8 m_originalAnimTier;
-
     bool m_AlreadyCallAssistance;
     bool m_AlreadySearchedAssistance;
     bool m_regenHealth;
+    bool m_regenPower;
     bool m_AI_locked;
 
     SpellSchoolMask m_meleeDamageSchoolMask;
@@ -425,9 +442,10 @@ protected:
 
     [[nodiscard]] bool IsInvisibleDueToDespawn() const override;
     bool CanAlwaysSee(WorldObject const* obj) const override;
+    bool IsAlwaysDetectableFor(WorldObject const* seer) const override;
 
 private:
-    void ForcedDespawn(uint32 timeMSToDespawn = 0);
+    void ForcedDespawn(uint32 timeMSToDespawn = 0, Seconds forcedRespawnTimer = 0s);
 
     [[nodiscard]] bool CanPeriodicallyCallForAssistance() const;
 
@@ -441,7 +459,7 @@ private:
 
     mutable std::shared_ptr<time_t> _lastDamagedTime; // Part of Evade mechanics
 
-    bool m_cannotReachTarget;
+    ObjectGuid m_cannotReachTarget;
     uint32 m_cannotReachTimer;
 
     Spell const* _focusSpell;   ///> Locks the target during spell cast for proper facing
@@ -450,7 +468,8 @@ private:
 
     uint32 m_assistanceTimer;
 
-    void applyInhabitFlags();
+    uint32 _playerDamageReq;
+    bool _damagedByPlayer;
 };
 
 class AssistDelayEvent : public BasicEvent
@@ -472,11 +491,24 @@ private:
 class ForcedDespawnDelayEvent : public BasicEvent
 {
 public:
-    ForcedDespawnDelayEvent(Creature& owner) : BasicEvent(), m_owner(owner) { }
+    ForcedDespawnDelayEvent(Creature& owner, Seconds respawnTimer) : BasicEvent(), m_owner(owner), m_respawnTimer(respawnTimer) { }
     bool Execute(uint64 e_time, uint32 p_time) override;
 
 private:
     Creature& m_owner;
+    Seconds const m_respawnTimer;
+};
+
+class TemporaryThreatModifierEvent : public BasicEvent
+{
+public:
+    TemporaryThreatModifierEvent(Creature& owner, ObjectGuid threatVictimGUID, float threatValue) : BasicEvent(), m_owner(owner), m_threatVictimGUID(threatVictimGUID), m_threatValue(threatValue) { }
+    bool Execute(uint64 e_time, uint32 p_time) override;
+
+private:
+    Creature& m_owner;
+    ObjectGuid m_threatVictimGUID;
+    float m_threatValue;
 };
 
 #endif

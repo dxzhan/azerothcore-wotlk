@@ -1,5 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _VMAPMANAGER2_H
@@ -94,7 +107,7 @@ namespace VMAP
         void unloadMap(unsigned int mapId, int x, int y) override;
         void unloadMap(unsigned int mapId) override;
 
-        bool isInLineOfSight(unsigned int mapId, float x1, float y1, float z1, float x2, float y2, float z2) override ;
+        bool isInLineOfSight(unsigned int mapId, float x1, float y1, float z1, float x2, float y2, float z2, ModelIgnoreFlags ignoreFlags) override ;
         /**
         fill the hit pos and return true, if an object was hit
         */
@@ -107,7 +120,7 @@ namespace VMAP
         bool GetLiquidLevel(uint32 pMapId, float x, float y, float z, uint8 reqLiquidType, float& level, float& floor, uint32& type, uint32& mogpFlags) const override;
         void GetAreaAndLiquidData(uint32 mapId, float x, float y, float z, uint8 reqLiquidType, AreaAndLiquidData& data) const override;
 
-        WorldModel* acquireModelInstance(const std::string& basepath, const std::string& filename);
+        WorldModel* acquireModelInstance(const std::string& basepath, const std::string& filename, uint32 flags);
         void releaseModelInstance(const std::string& filename);
 
         // what's the use of this? o.O
@@ -115,7 +128,7 @@ namespace VMAP
         {
             return getMapFileName(mapId);
         }
-        bool existsMap(const char* basePath, unsigned int mapId, int x, int y) override;
+        LoadResult existsMap(const char* basePath, unsigned int mapId, int x, int y) override;
         void GetInstanceMapTree(InstanceTreeMap& instanceMapTree);
 
         typedef uint32(*GetLiquidFlagsFn)(uint32 liquidType);

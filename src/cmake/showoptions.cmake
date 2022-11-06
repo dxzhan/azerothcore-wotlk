@@ -1,3 +1,15 @@
+#
+# This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+#
+# This file is free software; as a special exception the author gives
+# unlimited permission to copy and/or distribute it, with or without
+# modifications, as long as this notice is preserved.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+
 # output generic information about the core and buildtype chosen
 message("")
 message("* AzerothCore revision            : ${rev_hash} ${rev_date} (${rev_branch} branch)")
@@ -20,29 +32,30 @@ message("")
 
 # Show infomation about the options selected during configuration
 
-if( SERVERS )
-  message("* Build world/auth                : Yes (default)")
+if (APPS_BUILD AND (NOT APPS_BUILD STREQUAL "none"))
+  message("* Build applications              : Yes (${APPS_BUILD})")
 else()
-  message("* Build world/authserver          : No")
+  message("* Build applications              : No")
 endif()
 
-if(SCRIPTS AND (NOT SCRIPTS STREQUAL "none"))
+if (TOOLS_BUILD AND (NOT TOOLS_BUILD STREQUAL "none"))
+  message("* Build tools                     : Yes (${TOOLS_BUILD})")
+  add_definitions(-DNO_CORE_FUNCS)
+else()
+  message("* Build tools                     : No")
+endif()
+
+if (SCRIPTS AND (NOT SCRIPTS STREQUAL "none"))
   message("* Build with scripts              : Yes (${SCRIPTS})")
+
 else()
   message("* Build with scripts              : No")
 endif()
 
-if(MODULES  AND (NOT MODULES STREQUAL "none"))
+if (MODULES  AND (NOT MODULES STREQUAL "none"))
   message("* Build with modules              : Yes (${MODULES})")
 else()
   message("* Build with modules              : No")
-endif()
-
-if( TOOLS )
-  message("* Build map/vmap tools            : Yes")
-  add_definitions(-DNO_CORE_FUNCS)
-else()
-  message("* Build map/vmap tools            : No  (default)")
 endif()
 
 if( BUILD_TESTING )
@@ -144,6 +157,39 @@ if(WITH_STRICT_DATABASE_TYPE_CHECKS)
   add_definitions(-DACORE_STRICT_DATABASE_TYPE_CHECKS)
 endif()
 
+if(WITHOUT_METRICS)
+  message("")
+  message(" *** WITHOUT_METRICS - WARNING!")
+  message(" *** Please note that this will disable all metrics output (i.e. InfluxDB and Grafana)")
+  add_definitions(-DWITHOUT_METRICS)
+elseif (WITH_DETAILED_METRICS)
+  message("")
+  message(" *** WITH_DETAILED_METRICS - WARNING!")
+  message(" *** Please note that this will enable detailed metrics output (i.e. time each session takes to update)")
+  add_definitions(-DWITH_DETAILED_METRICS)
+endif()
+
+if(MSAN)
+    message("")
+    message(" *** MSAN - WARNING!")
+    message(" *** Please note that this is for DEBUGGING WITH MEMORY SANITIZER only!")
+    add_definitions(-DMSAN)
+endif()
+
+if(UBSAN)
+    message("")
+    message(" *** UBSAN - WARNING!")
+    message(" *** Please note that this is for DEBUGGING WITH UNDEFINED BEHAVIOR SANITIZER only!")
+    add_definitions(-DUBSAN)
+endif()
+
+if(TSAN)
+    message("")
+    message(" *** TSAN - WARNING!")
+    message(" *** Please note that this is for DEBUGGING WITH THREAD SANITIZER only!")
+    add_definitions(-DTSAN -DNO_BUFFERPOOL)
+endif()
+
 if(BUILD_SHARED_LIBS)
   message("")
   message(" *** WITH_DYNAMIC_LINKING - INFO!")
@@ -158,10 +204,12 @@ if(BUILD_SHARED_LIBS)
   WarnAboutSpacesInBuildPath()
 endif()
 
-if (USE_CPP_20)
+if (CONFIG_ABORT_INCORRECT_OPTIONS)
   message("")
-  message(" *** Enabled C++20 standart")
-  message(" *** Please note that this is an experimental feature!")
+  message(" WARNING !")
+  message(" Enabled abort if core found incorrect option in config files")
+
+  add_definitions(-DCONFIG_ABORT_INCORRECT_OPTIONS)
 endif()
 
 message("")

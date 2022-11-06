@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* ScriptData
@@ -11,12 +22,12 @@ SDComment: Doomfires not completely offlike due to core limitations for random m
 SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
-#include "hyjal.h"
 #include "Player.h"
-#include "ScriptedCreature.h"
 #include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "SpellAuras.h"
 #include "SpellScript.h"
+#include "hyjal.h"
 
 enum Texts
 {
@@ -113,7 +124,7 @@ public:
 
             ArchimondeGUID = instance->GetGuidData(DATA_ARCHIMONDE);
 
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            me->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
         }
 
         void EnterCombat(Unit* /*who*/) override { }
@@ -222,8 +233,7 @@ public:
                 }
                 else
                 {
-                    Position pos;
-                    me->GetRandomNearPosition(pos, 40);
+                    Position pos = me->GetRandomNearPosition(40);
                     me->GetMotionMaster()->MovePoint(0, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
                 }
 
@@ -309,13 +319,13 @@ public:
         void DoCastProtection()
         {
             // lets get spell info
-            const SpellInfo* info = sSpellMgr->GetSpellInfo(SPELL_PROTECTION_OF_ELUNE);
+            SpellInfo const* info = sSpellMgr->GetSpellInfo(SPELL_PROTECTION_OF_ELUNE);
 
             if (!info)
                 return;
 
             // Now lets get archimode threat list
-            ThreatContainer::StorageType const& t_list = me->getThreatMgr().getThreatList();
+            ThreatContainer::StorageType const& t_list = me->GetThreatMgr().GetThreatList();
 
             if (t_list.empty())
                 return;
@@ -425,7 +435,7 @@ public:
                 if (victim && me->IsWithinMeleeRange(victim))
                     return false;
 
-                ThreatContainer::StorageType const& threatlist = me->getThreatMgr().getThreatList();
+                ThreatContainer::StorageType const& threatlist = me->GetThreatMgr().GetThreatList();
                 if (threatlist.empty())
                     return false;
 
@@ -453,9 +463,9 @@ public:
                 summoned->AI()->AttackStart(me);
             else
             {
-                summoned->setFaction(me->getFaction());
-                summoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                summoned->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                summoned->SetFaction(me->GetFaction());
+                summoned->SetUnitFlag(UNIT_FLAG_NON_ATTACKABLE);
+                summoned->SetUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
             }
 
             if (summoned->GetEntry() == CREATURE_DOOMFIRE_SPIRIT)
@@ -480,7 +490,7 @@ public:
         {
             // Three doomfire can be up at the same time
             Talk(SAY_DOOMFIRE);
-            Unit* temp = SelectTarget(SELECT_TARGET_RANDOM, 1);
+            Unit* temp = SelectTarget(SelectTargetMethod::Random, 1);
             if (!temp)
                 temp = me->GetVictim();
 
@@ -542,15 +552,15 @@ public:
             if (!me->IsInCombat())
             {
                 // Do not let the raid skip straight to Archimonde. Visible and hostile ONLY if Azagalor is finished.
-                if ((instance->GetData(DATA_AZGALOREVENT) < DONE) && (me->IsVisible() || (me->getFaction() != 35)))
+                if ((instance->GetData(DATA_AZGALOREVENT) < DONE) && (me->IsVisible() || (me->GetFaction() != FACTION_FRIENDLY)))
                 {
                     me->SetVisible(false);
-                    me->setFaction(35);
+                    me->SetFaction(FACTION_FRIENDLY);
                 }
 
-                if ((instance->GetData(DATA_AZGALOREVENT) >= DONE) && (!me->IsVisible() || (me->getFaction() == 35)))
+                if ((instance->GetData(DATA_AZGALOREVENT) >= DONE) && (!me->IsVisible() || (me->GetFaction() == FACTION_FRIENDLY)))
                 {
-                    me->setFaction(1720);
+                    me->SetFaction(FACTION_DRAGONKIN);
                     me->SetVisible(true);
                 }
 
@@ -566,7 +576,7 @@ public:
 
                             if (Unit* Nordrassil = ObjectAccessor::GetUnit(*me, WorldTreeGUID))
                             {
-                                Nordrassil->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                                Nordrassil->SetUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                                 Nordrassil->SetDisplayId(11686);
                                 DoCast(Nordrassil, SPELL_DRAIN_WORLD_TREE);
                                 IsChanneling = true;
@@ -637,19 +647,19 @@ public:
                 case EVENT_SPELL_FINGER_OF_DEATH:
                     if (CanUseFingerOfDeath())
                     {
-                        Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0);
+                        Unit* target = SelectTarget(SelectTargetMethod::Random, 0);
                         DoCast(target, SPELL_FINGER_OF_DEATH);
                         DoCastVictim(SPELL_RED_SKY_EFFECT);
                     }
                     events.ScheduleEvent(EVENT_SPELL_FINGER_OF_DEATH, 3500);
                     break;
                 case EVENT_SPELL_GRIP_OF_THE_LEGION:
-                    DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), SPELL_GRIP_OF_THE_LEGION);
+                    DoCast(SelectTarget(SelectTargetMethod::Random, 0), SPELL_GRIP_OF_THE_LEGION);
                     events.ScheduleEvent(EVENT_SPELL_GRIP_OF_THE_LEGION, urand(5000, 25000));
                     break;
                 case EVENT_SPELL_AIR_BURST:
                     Talk(SAY_AIR_BURST);
-                    DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), SPELL_AIR_BURST);
+                    DoCast(SelectTarget(SelectTargetMethod::Random, 0), SPELL_AIR_BURST);
                     events.ScheduleEvent(EVENT_SPELL_AIR_BURST, urand(25000, 40000));
                     break;
                 case EVENT_SPELL_FEAR:

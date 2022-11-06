@@ -1,14 +1,27 @@
 /*
- * Originally written by Xinef - Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
-*/
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "CellImpl.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
-#include "naxxramas.h"
 #include "PassiveAI.h"
-#include "ScriptedCreature.h"
 #include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "naxxramas.h"
 
 const float HeiganPos[2] = {2796, -3707};
 const float HeiganEruptionSlope[3] =
@@ -390,7 +403,7 @@ public:
                     if (GetBossState(BOSS_LOATHEB) == DONE)
                     {
                         pGo->SetGoState(GO_STATE_ACTIVE);
-                        pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        pGo->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                     }
                     break;
                 case GO_THADDIUS_PORTAL:
@@ -398,7 +411,7 @@ public:
                     if (GetBossState(BOSS_THADDIUS) == DONE)
                     {
                         pGo->SetGoState(GO_STATE_ACTIVE);
-                        pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        pGo->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                     }
                     break;
                 case GO_MAEXXNA_PORTAL:
@@ -406,7 +419,7 @@ public:
                     if (GetBossState(BOSS_MAEXXNA) == DONE)
                     {
                         pGo->SetGoState(GO_STATE_ACTIVE);
-                        pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        pGo->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                     }
                     break;
                 case GO_HORSEMAN_PORTAL:
@@ -414,7 +427,7 @@ public:
                     if (GetBossState(BOSS_HORSEMAN) == DONE)
                     {
                         pGo->SetGoState(GO_STATE_ACTIVE);
-                        pGo->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        pGo->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                     }
                     break;
 
@@ -627,6 +640,27 @@ public:
             return 0;
         }
 
+        bool AreAllWingsCleared() const
+        {
+            return (GetBossState(BOSS_MAEXXNA) == DONE) && (GetBossState(BOSS_LOATHEB) == DONE) && (GetBossState(BOSS_THADDIUS) == DONE) && (GetBossState(BOSS_HORSEMAN) == DONE);
+        }
+
+        bool CheckRequiredBosses(uint32 bossId, Player const* /* player */) const override
+        {
+            switch (bossId)
+            {
+                case BOSS_SAPPHIRON:
+                    if (!AreAllWingsCleared())
+                    {
+                        return false;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        }
+
         bool SetBossState(uint32 bossId, EncounterState state) override
         {
             // pull all the trash if not killed
@@ -831,7 +865,7 @@ public:
                         if (GameObject* go = instance->GetGameObject(_loathebPortalGUID))
                         {
                             go->SetGoState(GO_STATE_ACTIVE);
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                         }
                         if (GameObject* go = instance->GetGameObject(_plagueEyePortalGUID))
                         {
@@ -871,7 +905,7 @@ public:
                         if (GameObject* go = instance->GetGameObject(_maexxnaPortalGUID))
                         {
                             go->SetGoState(GO_STATE_ACTIVE);
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                         }
                         if (GameObject* go = instance->GetGameObject(_spiderEyePortalGUID))
                         {
@@ -904,7 +938,7 @@ public:
                         if (GameObject* go = instance->GetGameObject(_thaddiusPortalGUID))
                         {
                             go->SetGoState(GO_STATE_ACTIVE);
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                         }
                         if (GameObject* go = instance->GetGameObject(_abomEyePortalGUID))
                         {
@@ -920,7 +954,7 @@ public:
                         if (GameObject* go = instance->GetGameObject(_horsemanPortalGUID))
                         {
                             go->SetGoState(GO_STATE_ACTIVE);
-                            go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                            go->RemoveGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                         }
                         if (GameObject* go = instance->GetGameObject(_deathknightEyePortalGUID))
                         {
@@ -1156,7 +1190,7 @@ public:
 
         uint32 timer;
 
-        void JustDied(Unit* ) override
+        void JustDied(Unit* /*killer*/) override
         {
             if (me->GetEntry() == NPC_MR_BIGGLESWORTH && me->GetInstanceScript())
             {
@@ -1208,8 +1242,33 @@ public:
     };
 };
 
+const Position sapphironEntryTP = { 3498.300049f, -5349.490234f, 144.968002f, 1.3698910f };
+
+class at_naxxramas_hub_portal : public AreaTriggerScript
+{
+public:
+    at_naxxramas_hub_portal() : AreaTriggerScript("at_naxxramas_hub_portal") { }
+
+    bool OnTrigger(Player* player, AreaTrigger const* /*trigger*/) override
+    {
+        if (player->IsAlive() && !player->IsInCombat())
+        {
+            if (InstanceScript *instance = player->GetInstanceScript())
+            {
+                if (instance->CheckRequiredBosses(BOSS_SAPPHIRON))
+                {
+                    player->TeleportTo(533, sapphironEntryTP.m_positionX, sapphironEntryTP.m_positionY, sapphironEntryTP.m_positionZ, sapphironEntryTP.m_orientation);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+};
+
 void AddSC_instance_naxxramas()
 {
     new instance_naxxramas();
     new boss_naxxramas_misc();
+    new at_naxxramas_hub_portal();
 }

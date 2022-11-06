@@ -1,33 +1,39 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AvgDiffTracker.h"
+#include "MapMgr.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
 #include "GridDefines.h"
 #include "Group.h"
 #include "InstanceSaveMgr.h"
 #include "InstanceScript.h"
-#include "Language.h"
 #include "LFGMgr.h"
+#include "Language.h"
 #include "Log.h"
 #include "MapInstanced.h"
-#include "MapMgr.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Opcodes.h"
-#include "ScriptMgr.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "Transport.h"
 #include "World.h"
 #include "WorldPacket.h"
-
-#ifdef ELUNA
-#include "LuaEngine.h"
-#endif
 
 MapMgr::MapMgr()
 {
@@ -65,12 +71,12 @@ Map* MapMgr::CreateBaseMap(uint32 id)
 {
     Map* map = FindBaseMap(id);
 
-    if (map == nullptr)
+    if (!map)
     {
         std::lock_guard<std::mutex> guard(Lock);
 
         map = FindBaseMap(id);
-        if (map == nullptr) // pussywizard: check again after acquiring mutex
+        if (!map) // pussywizard: check again after acquiring mutex
         {
             MapEntry const* entry = sMapStore.LookupEntry(id);
             ASSERT(entry);
@@ -163,7 +169,7 @@ Map::EnterState MapMgr::PlayerCannotEnter(uint32 mapid, Player* player, bool log
             // probably there must be special opcode, because client has this string constant in GlobalStrings.lua
             // TODO: this is not a good place to send the message
             player->GetSession()->SendAreaTriggerMessage(player->GetSession()->GetAcoreString(LANG_INSTANCE_RAID_GROUP_ONLY), mapName);
-            LOG_DEBUG("maps", "MAP: Player '%s' must be in a raid group to enter instance '%s'", player->GetName().c_str(), mapName);
+            LOG_DEBUG("maps", "MAP: Player '{}' must be in a raid group to enter instance '{}'", player->GetName(), mapName);
             return Map::CANNOT_ENTER_NOT_IN_RAID;
         }
     }
@@ -196,14 +202,14 @@ Map::EnterState MapMgr::PlayerCannotEnter(uint32 mapid, Player* player, bool log
             {
                 WorldPacket data(SMSG_CORPSE_NOT_IN_INSTANCE, 0);
                 player->GetSession()->SendPacket(&data);
-                LOG_DEBUG("maps", "MAP: Player '%s' does not have a corpse in instance '%s' and cannot enter.", player->GetName().c_str(), mapName);
+                LOG_DEBUG("maps", "MAP: Player '{}' does not have a corpse in instance '{}' and cannot enter.", player->GetName(), mapName);
                 return Map::CANNOT_ENTER_CORPSE_IN_DIFFERENT_INSTANCE;
             }
-            LOG_DEBUG("maps", "MAP: Player '%s' has corpse in instance '%s' and can enter.", player->GetName().c_str(), mapName);
+            LOG_DEBUG("maps", "MAP: Player '{}' has corpse in instance '{}' and can enter.", player->GetName(), mapName);
         }
         else
         {
-            LOG_DEBUG("maps", "Map::PlayerCannotEnter - player '%s' is dead but does not have a corpse!", player->GetName().c_str());
+            LOG_DEBUG("maps", "Map::PlayerCannotEnter - player '{}' is dead but does not have a corpse!", player->GetName());
         }
     }
 
@@ -225,7 +231,7 @@ Map::EnterState MapMgr::PlayerCannotEnter(uint32 mapid, Player* player, bool log
             instaceIdToCheck = save->GetInstanceId();
 
         // instaceIdToCheck can be 0 if save not found - means no bind so the instance is new
-        if (!player->CheckInstanceCount(instaceIdToCheck) && !player->isDead())
+        if (!player->CheckInstanceCount(instaceIdToCheck))
         {
             player->SendTransferAborted(mapid, TRANSFER_ABORT_TOO_MANY_INSTANCES);
             return Map::CANNOT_ENTER_TOO_MANY_INSTANCES;
@@ -245,13 +251,12 @@ void MapMgr::Update(uint32 diff)
     //if (mapUpdateStep == 0)
     {
         if (m_updater.activated())
+        {
             m_updater.schedule_lfg_update(diff);
+        }
         else
         {
-            uint32 startTime = getMSTime();
             sLFGMgr->Update(diff, 1);
-            uint32 totalTime = getMSTimeDiff(startTime, getMSTime());
-            lfgDiffTracker.Update(10000 + totalTime); // +10k to mark it was NOT multithreaded
         }
     }
 
@@ -381,7 +386,7 @@ void MapMgr::InitInstanceIds()
     QueryResult result = CharacterDatabase.Query("SELECT MAX(id) FROM instance");
     if (result)
     {
-        uint32 maxId = (*result)[0].GetUInt32();
+        uint32 maxId = (*result)[0].Get<uint32>();
         _instanceIds.resize(maxId + 1);
     }
 }

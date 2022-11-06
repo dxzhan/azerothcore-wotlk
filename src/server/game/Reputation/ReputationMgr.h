@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __ACORE_REPUTATION_MGR_H
@@ -14,10 +25,16 @@
 #include "SharedDefines.h"
 #include <map>
 
-static uint32 ReputationRankStrIndex[MAX_REPUTATION_RANK] =
+constexpr std::array<uint32, MAX_REPUTATION_RANK> ReputationRankStrIndex =
 {
-    LANG_REP_HATED,    LANG_REP_HOSTILE, LANG_REP_UNFRIENDLY, LANG_REP_NEUTRAL,
-    LANG_REP_FRIENDLY, LANG_REP_HONORED, LANG_REP_REVERED,    LANG_REP_EXALTED
+    LANG_REP_HATED,
+    LANG_REP_HOSTILE,
+    LANG_REP_UNFRIENDLY,
+    LANG_REP_NEUTRAL,
+    LANG_REP_FRIENDLY,
+    LANG_REP_HONORED,
+    LANG_REP_REVERED,
+    LANG_REP_EXALTED
 };
 
 typedef uint32 RepListID;
@@ -29,6 +46,7 @@ struct FactionState
     uint8 Flags;
     bool needSend;
     bool needSave;
+    bool roundedUp;
 };
 
 typedef std::map<RepListID, FactionState> FactionStateList;
@@ -51,6 +69,8 @@ public:                                                 // statics
     static const int32 Reputation_Bottom;
 
     static ReputationRank ReputationToRank(int32 standing);
+    static int32 ReputationRankToStanding(ReputationRank rank);
+
 public:                                                 // accessors
     uint8 GetVisibleFactionCount() const { return _visibleFactionCount; }
     uint8 GetHonoredFactionCount() const { return _honoredFactionCount; }
@@ -91,13 +111,13 @@ public:                                                 // accessors
     }
 
 public:                                                 // modifiers
-    bool SetReputation(FactionEntry const* factionEntry, int32 standing)
+    bool SetReputation(FactionEntry const* factionEntry, float standing)
     {
-        return SetReputation(factionEntry, standing, false, false);
+        return SetReputation(factionEntry, standing, false);
     }
-    bool ModifyReputation(FactionEntry const* factionEntry, int32 standing, bool spillOverOnly = false)
+    bool ModifyReputation(FactionEntry const* factionEntry, float standing, bool noSpillOver = false, Optional<ReputationRank> repMaxCap = {})
     {
-        return SetReputation(factionEntry, standing, true, spillOverOnly);
+        return SetReputation(factionEntry, standing, true, noSpillOver, repMaxCap);
     }
 
     void SetVisible(FactionTemplateEntry const* factionTemplateEntry);
@@ -108,7 +128,7 @@ public:                                                 // modifiers
     void ApplyForceReaction(uint32 faction_id, ReputationRank rank, bool apply);
 
     //! Public for chat command needs
-    bool SetOneFactionReputation(FactionEntry const* factionEntry, int32 standing, bool incremental);
+    bool SetOneFactionReputation(FactionEntry const* factionEntry, float standing, bool incremental, Optional<ReputationRank> repMaxCap = { });
 
 public:                                                 // senders
     void SendInitialReputations();
@@ -119,7 +139,7 @@ public:                                                 // senders
 private:                                                // internal helper functions
     void Initialize();
     uint32 GetDefaultStateFlags(FactionEntry const* factionEntry) const;
-    bool SetReputation(FactionEntry const* factionEntry, int32 standing, bool incremental, bool spillOverOnly);
+    bool SetReputation(FactionEntry const* factionEntry, float standing, bool incremental, bool noSpillOver = false, Optional<ReputationRank> repMaxCap = { });
     void SetVisible(FactionState* faction);
     void SetAtWar(FactionState* faction, bool atWar) const;
     void SetInactive(FactionState* faction, bool inactive) const;

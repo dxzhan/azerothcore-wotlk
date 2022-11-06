@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef ACORE_WAYPOINTMOVEMENTGENERATOR_H
@@ -90,40 +101,48 @@ private:
 class FlightPathMovementGenerator : public MovementGeneratorMedium< Player, FlightPathMovementGenerator >,
     public PathMovementBase<Player, TaxiPathNodeList>
 {
-public:
-    explicit FlightPathMovementGenerator(uint32 startNode = 0)
-    {
-        i_currentNode = startNode;
-        _endGridX = 0.0f;
-        _endGridY = 0.0f;
-        _endMapId = 0;
-        _preloadTargetNode = 0;
-        _mapSwitch = false;
-    }
-    void LoadPath(Player* player);
-    void DoInitialize(Player*);
-    void DoReset(Player*);
-    void DoFinalize(Player*);
-    bool DoUpdate(Player*, uint32);
-    MovementGeneratorType GetMovementGeneratorType() { return FLIGHT_MOTION_TYPE; }
+    public:
+        explicit FlightPathMovementGenerator(uint32 startNode = 0)
+        {
+            i_currentNode = startNode;
+            _endGridX = 0.0f;
+            _endGridY = 0.0f;
+            _endMapId = 0;
+            _preloadTargetNode = 0;
+        }
+        void LoadPath(Player* player);
+        void DoInitialize(Player*);
+        void DoReset(Player*);
+        void DoFinalize(Player*);
+        bool DoUpdate(Player*, uint32);
+        MovementGeneratorType GetMovementGeneratorType() override { return FLIGHT_MOTION_TYPE; }
 
-    TaxiPathNodeList const& GetPath() { return i_path; }
-    uint32 GetPathAtMapEnd() const;
-    bool HasArrived() const { return (i_currentNode >= i_path.size()); }
-    void SetCurrentNodeAfterTeleport();
-    void SkipCurrentNode() { ++i_currentNode; }
-    void DoEventIfAny(Player* player, TaxiPathNodeEntry const* node, bool departure);
+        TaxiPathNodeList const& GetPath() { return i_path; }
+        uint32 GetPathAtMapEnd() const;
+        bool HasArrived() const { return (i_currentNode >= i_path.size()); }
+        void SetCurrentNodeAfterTeleport();
+        void SkipCurrentNode() { ++i_currentNode; }
+        void DoEventIfAny(Player* player, TaxiPathNodeEntry const* node, bool departure);
 
-    void InitEndGridInfo();
-    void PreloadEndGrid();
+        bool GetResetPos(Player*, float& x, float& y, float& z);
 
-private:
-    float _endGridX;                //! X coord of last node location
-    float _endGridY;                //! Y coord of last node location
-    uint32 _endMapId;               //! map Id of last node location
-    uint32 _preloadTargetNode;      //! node index where preloading starts
-    bool _mapSwitch;
+        void InitEndGridInfo();
+        void PreloadEndGrid();
 
-    std::deque<uint32> _pointsForPathSwitch;    //! node indexes and costs where TaxiPath changes
+    private:
+
+        float _endGridX;                            //! X coord of last node location
+        float _endGridY;                            //! Y coord of last node location
+        uint32 _endMapId;                           //! map Id of last node location
+        uint32 _preloadTargetNode;                  //! node index where preloading starts
+
+        struct TaxiNodeChangeInfo
+        {
+            uint32 PathIndex;
+            int32 Cost;
+        };
+
+        std::deque<TaxiNodeChangeInfo> _pointsForPathSwitch;    //! node indexes and costs where TaxiPath changes
 };
+
 #endif

@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef AZEROTHCORE_TEMPSUMMON_H
@@ -41,12 +52,14 @@ public:
     [[nodiscard]] Unit* GetSummonerUnit() const;
     [[nodiscard]] Creature* GetSummonerCreatureBase() const;
     [[nodiscard]] GameObject* GetSummonerGameObject() const;
-    ObjectGuid GetSummonerGUID() { return m_summonerGUID; }
-    TempSummonType const& GetSummonType() { return m_type; }
+    ObjectGuid GetSummonerGUID() const { return m_summonerGUID; }
+    TempSummonType GetSummonType() const { return m_type; }
     uint32 GetTimer() { return m_timer; }
     void SetTimer(uint32 t) { m_timer = t; }
 
     const SummonPropertiesEntry* const m_Properties;
+
+    std::string GetDebugInfo() const override;
 private:
     TempSummonType m_type;
     uint32 m_timer;
@@ -66,6 +79,8 @@ public:
     [[nodiscard]] bool IsPetGhoul() const {return GetEntry() == 26125 /*normal ghoul*/ || GetEntry() == 30230 /*Raise Ally ghoul*/;} // Ghoul may be guardian or pet
     [[nodiscard]] bool IsGuardianPet() const;
     void setDeathState(DeathState s, bool despawn = false) override;                   // override virtual Unit::setDeathState
+
+    std::string GetDebugInfo() const override;
 protected:
     const ObjectGuid m_owner;
     float m_followAngle;
@@ -86,6 +101,8 @@ public:
     void UpdateMaxPower(Powers power) override;
     void UpdateAttackPowerAndDamage(bool ranged = false) override;
     void UpdateDamagePhysical(WeaponAttackType attType) override;
+
+    std::string GetDebugInfo() const override;
 };
 
 class Puppet : public Minion

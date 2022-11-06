@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* ScriptData
@@ -13,8 +24,9 @@ EndScriptData */
 
 #include "CellImpl.h"
 #include "GridNotifiers.h"
-#include "ScriptedCreature.h"
+#include "GridNotifiersImpl.h"
 #include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "zulaman.h"
 
 enum Yells
@@ -225,7 +237,7 @@ public:
             Acore::CreatureListSearcher<Acore::AllCreaturesOfEntryInRange> searcher(me, templist, check);
             Cell::VisitGridObjects(me, searcher, me->GetGridActivationRange());
 
-            //TC_LOG_ERROR("scripts", "Eggs %d at middle", templist.size());
+            //LOG_ERROR("scripts", "Eggs {} at middle", templist.size());
             if (templist.empty())
                 return false;
 
@@ -262,9 +274,9 @@ public:
             {
                 if (Unit* FireBomb = ObjectAccessor::GetUnit(*me, FireBombGUIDs[BombCount]))
                 {
-                    FireBomb->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    FireBomb->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                     DoCast(FireBomb, SPELL_FIRE_BOMB_THROW, true);
-                    FireBomb->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    FireBomb->SetUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                 }
                 ++BombCount;
                 if (BombCount == 40)
@@ -390,13 +402,11 @@ public:
                 else HatcherTimer -= diff;
             }
 
-            EnterEvadeIfOutOfCombatArea();
-
             DoMeleeAttackIfReady();
 
             if (FireBreathTimer <= diff)
             {
-                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                 {
                     me->AttackStop();
                     me->GetMotionMaster()->Clear();
@@ -435,7 +445,7 @@ public:
 
         void Reset() override { }
 
-        void SpellHit(Unit* /*caster*/, const SpellInfo* spell) override
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
         {
             if (spell->Id == SPELL_FIRE_BOMB_THROW)
                 DoCast(me, SPELL_FIRE_BOMB_DUMMY, true);
@@ -502,7 +512,7 @@ public:
             Acore::CreatureListSearcher<Acore::AllCreaturesOfEntryInRange> searcher(me, templist, check);
             Cell::VisitGridObjects(me, searcher, me->GetGridActivationRange());
 
-            //TC_LOG_ERROR("scripts", "Eggs %d at %d", templist.size(), side);
+            //LOG_ERROR("scripts", "Eggs {} at {}", templist.size(), side);
 
             for (std::list<Creature*>::const_iterator i = templist.begin(); i != templist.end() && num > 0; ++i)
                 if ((*i)->GetDisplayId() != 11686)
@@ -656,7 +666,7 @@ public:
 
         void UpdateAI(uint32 /*diff*/) override { }
 
-        void SpellHit(Unit* /*caster*/, const SpellInfo* spell) override
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
         {
             if (spell->Id == SPELL_HATCH_EGG)
             {

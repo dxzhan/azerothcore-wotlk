@@ -1,12 +1,25 @@
 /*
- * Originally written by Xinef - Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
-*/
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
+#include "EventMap.h"
 #include "InstanceScript.h"
-#include "old_hillsbrad.h"
 #include "Player.h"
-#include "ScriptedCreature.h"
 #include "ScriptMgr.h"
+#include "old_hillsbrad.h"
 
 const Position instancePositions[INSTANCE_POSITIONS_COUNT] =
 {
@@ -103,7 +116,7 @@ public:
             {
                 case GO_BARREL:
                     if (_encounterProgress >= ENCOUNTER_PROGRESS_BARRELS)
-                        gameobject->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        gameobject->SetGameObjectFlag(GO_FLAG_NOT_SELECTABLE);
                     break;
                 case GO_PRISON_DOOR:
                     if (_encounterProgress >= ENCOUNTER_PROGRESS_THRALL_ARMORED)
@@ -149,7 +162,7 @@ public:
                     }
                 case DATA_THRALL_ADD_FLAG:
                     if (Creature* thrall = instance->GetCreature(_thrallGUID))
-                        thrall->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                        thrall->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
                     break;
             }
         }
@@ -209,7 +222,7 @@ public:
                         if (_encounterProgress == ENCOUNTER_PROGRESS_NONE)
                         {
                             Map::PlayerList const& players = instance->GetPlayers();
-                            if (!players.isEmpty())
+                            if (!players.IsEmpty())
                                 for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                                     if (Player* player = itr->GetSource())
                                         player->KilledMonsterCredit(NPC_LODGE_QUEST_TRIGGER);

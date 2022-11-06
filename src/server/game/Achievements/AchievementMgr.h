@@ -1,20 +1,31 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef __ACORE_ACHIEVEMENTMGR_H
 #define __ACORE_ACHIEVEMENTMGR_H
 
-#include <map>
-#include <string>
-#include <chrono>
-
 #include "Common.h"
-#include "DatabaseEnv.h"
 #include "DBCEnums.h"
 #include "DBCStores.h"
+#include "DatabaseEnv.h"
 #include "ObjectGuid.h"
+#include <chrono>
+#include <map>
+#include <string>
 
 typedef std::list<AchievementCriteriaEntry const*> AchievementCriteriaEntryList;
 typedef std::list<AchievementEntry const*>         AchievementEntryList;
@@ -32,38 +43,39 @@ struct CriteriaProgress
 enum AchievementCriteriaDataType
 {
     // value1         value2        comment
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_NONE                = 0, // 0              0
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_CREATURE          = 1, // creature_id    0
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE = 2, // class_id       race_id
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_NONE                 = 0, // 0              0
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_CREATURE           = 1, // creature_id    0
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE  = 2, // class_id       race_id
     ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_LESS_HEALTH = 3, // health_percent 0
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD       = 4, // own_team       0             not corpse (not released body), own_team == false if enemy team expected
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA              = 5, // spell_id       effect_idx
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA              = 6, // area id        0
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA              = 7, // spell_id       effect_idx
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_VALUE               = 8, // minvalue                     value provided with achievement update must be not less that limit
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL             = 9, // minlevel                     minlevel of target
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER            = 10, // gender                       0=male; 1=female
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT              = 11, // scripted requirement
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY      = 12, // difficulty                   normal/heroic difficulty for current event map
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT    = 13, // count                        "with less than %u people in the zone"
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM              = 14, // team                         HORDE(67), ALLIANCE(469)
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK             = 15, // drunken_state  0             (enum DrunkenState) of player
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY             = 16, // holiday_id     0             event in holiday time
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_LOSS_TEAM_SCORE  = 17, // min_score      max_score     player's team win bg and opposition team have team score in range
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_INSTANCE_SCRIPT     = 18, // 0              0             maker instance script call for check current criteria requirements fit
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_EQUIPED_ITEM      = 19, // item_level     item_quality  for equipped item in slot to check item level and quality
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID              = 20, // map_id         0             player must be on map with id in map_id
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE = 21, // class_id       race_id
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_NTH_BIRTHDAY        = 22, // N                            login on day of N-th Birthday
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_KNOWN_TITLE       = 23, // title_id                     known (pvp) title, values from dbc
-    ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_TEAMS_SCORES     = 24, // winner_score   loser score   player's team win bg and their teams have exact scores
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD        = 4, // own_team       0             not corpse (not released body), own_team == false if enemy team expected
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA               = 5, // spell_id       effect_idx
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA               = 6, // area id        0
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA               = 7, // spell_id       effect_idx
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_VALUE                = 8, // minvalue                     value provided with achievement update must be not less that limit
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL              = 9, // minlevel                     minlevel of target
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER             = 10, // gender                       0=male; 1=female
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT               = 11, // scripted requirement
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY       = 12, // difficulty                   normal/heroic difficulty for current event map
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT     = 13, // count                        "with less than %u people in the zone"
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM               = 14, // team                         HORDE(67), ALLIANCE(469)
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK              = 15, // drunken_state  0             (enum DrunkenState) of player
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY              = 16, // holiday_id     0             event in holiday time
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_LOSS_TEAM_SCORE   = 17, // min_score      max_score     player's team win bg and opposition team have team score in range
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_INSTANCE_SCRIPT      = 18, // 0              0             maker instance script call for check current criteria requirements fit
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_EQUIPED_ITEM       = 19, // item_level     item_quality  for equipped item in slot to check item level and quality
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID               = 20, // map_id         0             player must be on map with id in map_id
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE  = 21, // class_id       race_id
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_NTH_BIRTHDAY         = 22, // N                            login on day of N-th Birthday
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_KNOWN_TITLE        = 23, // title_id                     known (pvp) title, values from dbc
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_TEAMS_SCORES      = 24, // winner_score   loser score   player's team win bg and their teams have exact scores
+    ACHIEVEMENT_CRITERIA_DATA_TYPE_S_ITEM_QUALITY       = 25  // item_quality
 };
-#define MAX_ACHIEVEMENT_CRITERIA_DATA_TYPE               25 // maximum value in AchievementCriteriaDataType enum
+#define MAX_ACHIEVEMENT_CRITERIA_DATA_TYPE               26 // maximum value in AchievementCriteriaDataType enum
 
 enum AchievementCommonCategories
 {
-    ACHIEVEMENT_CATEOGRY_GENERAL                       = -1,
-    ACHIEVEMENT_CATEGORY_STATISTICS                    =  1
+    ACHIEVEMENT_CATEOGRY_GENERAL                        = -1,
+    ACHIEVEMENT_CATEGORY_STATISTICS                     =  1
 };
 
 class Player;
@@ -74,117 +86,122 @@ struct AchievementCriteriaData
     AchievementCriteriaDataType dataType{ACHIEVEMENT_CRITERIA_DATA_TYPE_NONE};
     union
     {
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_NONE              = 0 (no data)
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_CREATURE        = 1
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_NONE                  = 0 (no data)
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_CREATURE            = 1
         struct
         {
             uint32 id;
         } creature;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE = 2
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE = 21
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_CLASS_RACE   = 2
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_PLAYER_CLASS_RACE   = 21
         struct
         {
             uint32 class_id;
             uint32 race_id;
         } classRace;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_LESS_HEALTH = 3
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_LESS_HEALTH  = 3
         struct
         {
             uint32 percent;
         } health;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD     = 4
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_PLAYER_DEAD         = 4
         struct
         {
             uint32 own_team_flag;
         } player_dead;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA            = 5
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA            = 7
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AURA                = 5
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_AURA                = 7
         struct
         {
             uint32 spell_id;
             uint32 effect_idx;
         } aura;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA            = 6
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_AREA                = 6
         struct
         {
             uint32 id;
         } area;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_VALUE             = 8
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_VALUE                 = 8
         struct
         {
             uint32 value;
             uint32 compType;
         } value;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL           = 9
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_LEVEL               = 9
         struct
         {
             uint32 minlevel;
         } level;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER          = 10
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_GENDER              = 10
         struct
         {
             uint32 gender;
         } gender;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT            = 11 (no data)
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY    = 12
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_SCRIPT                = 11 (no data)
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_DIFFICULTY        = 12
         struct
         {
             uint32 difficulty;
         } difficulty;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT  = 13
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_PLAYER_COUNT      = 13
         struct
         {
             uint32 maxcount;
         } map_players;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM            = 14
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_T_TEAM                = 14
         struct
         {
             uint32 team;
         } team;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK           = 15
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_DRUNK               = 15
         struct
         {
             uint32 state;
         } drunk;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY           = 16
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_HOLIDAY               = 16
         struct
         {
             uint32 id;
         } holiday;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_LOSS_TEAM_SCORE= 17
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_LOSS_TEAM_SCORE    = 17
         struct
         {
             uint32 min_score;
             uint32 max_score;
         } bg_loss_team_score;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_INSTANCE_SCRIPT   = 18 (no data)
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_EQUIPED_ITEM    = 19
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_INSTANCE_SCRIPT       = 18 (no data)
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_EQUIPED_ITEM        = 19
         struct
         {
             uint32 item_level;
             uint32 item_quality;
         } equipped_item;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID            = 20
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_MAP_ID                = 20
         struct
         {
             uint32 mapId;
         } map_id;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_NTH_BIRTHDAY      = 22
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_NTH_BIRTHDAY          = 22
         struct
         {
             uint32 nth_birthday;
         } birthday_login;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_KNOWN_TITLE       = 23
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_KNOWN_TITLE           = 23
         struct
         {
             uint32 title_id;
         } known_title;
-        // ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_TEAMS_SCORES   = 24
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_BG_TEAMS_SCORES       = 24
         struct
         {
             uint32 winner_score;
             uint32 loser_score;
         } teams_scores;
+        // ACHIEVEMENT_CRITERIA_DATA_TYPE_S_ITEM_QUALITY        = 25
+        struct
+        {
+            uint32 item_quality;
+        } item;
         // ...
         struct
         {
@@ -214,7 +231,7 @@ struct AchievementCriteriaData
 
 struct AchievementCriteriaDataSet
 {
-    AchievementCriteriaDataSet()  {}
+    AchievementCriteriaDataSet()  = default;
     typedef std::vector<AchievementCriteriaData> Storage;
     void Add(AchievementCriteriaData const& data) { storage.push_back(data); }
     bool Meets(Player const* source, Unit const* target, uint32 miscvalue = 0) const;
@@ -292,7 +309,7 @@ private:
     bool IsCompletedCriteria(AchievementCriteriaEntry const* achievementCriteria, AchievementEntry const* achievement);
     bool IsCompletedAchievement(AchievementEntry const* entry);
     bool CanUpdateCriteria(AchievementCriteriaEntry const* criteria, AchievementEntry const* achievement);
-    void BuildAllDataPacket(WorldPacket* data, bool inspect = false) const;
+    void BuildAllDataPacket(WorldPacket* data) const;
 
     Player* m_player;
     CriteriaProgressMap m_criteriaProgress;
@@ -389,7 +406,7 @@ private:
     // store achievements by referenced achievement id to speed up lookup
     AchievementListByReferencedId m_AchievementListByReferencedId;
 
-    typedef std::unordered_map<uint32 /*achievementId*/, std::chrono::system_clock::time_point /*completionTime*/> AllCompletedAchievements;
+    typedef std::unordered_map<uint32 /*achievementId*/, SystemTimePoint /*completionTime*/> AllCompletedAchievements;
     AllCompletedAchievements m_allCompletedAchievements;
 
     AchievementRewards m_achievementRewards;

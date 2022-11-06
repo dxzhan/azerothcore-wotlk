@@ -1,17 +1,23 @@
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+-- --------------------------------------------------------
+-- Värd:                         127.0.0.1
+-- Serverversion:                8.0.28 - MySQL Community Server - GPL
+-- Server-OS:                    Win64
+-- HeidiSQL Version:             11.3.0.6295
+-- --------------------------------------------------------
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+-- Dumpar struktur för tabell acore_world.skillline_dbc
 DROP TABLE IF EXISTS `skillline_dbc`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = UTF8MB4 */;
-CREATE TABLE `skillline_dbc` 
-(
-  `ID` INT NOT NULL DEFAULT 0,
-  `CategoryID` INT NOT NULL DEFAULT 0,
-  `SkillCostsID` INT NOT NULL DEFAULT 0,
+CREATE TABLE IF NOT EXISTS `skillline_dbc` (
+  `ID` int NOT NULL DEFAULT '0',
+  `CategoryID` int NOT NULL DEFAULT '0',
+  `SkillCostsID` int NOT NULL DEFAULT '0',
   `DisplayName_Lang_enUS` varchar(100) DEFAULT NULL,
   `DisplayName_Lang_enGB` varchar(100) DEFAULT NULL,
   `DisplayName_Lang_koKR` varchar(100) DEFAULT NULL,
@@ -28,7 +34,7 @@ CREATE TABLE `skillline_dbc`
   `DisplayName_Lang_ptBR` varchar(100) DEFAULT NULL,
   `DisplayName_Lang_itIT` varchar(100) DEFAULT NULL,
   `DisplayName_Lang_Unk` varchar(100) DEFAULT NULL,
-  `DisplayName_Lang_Mask` INT unsigned NOT NULL DEFAULT 0,
+  `DisplayName_Lang_Mask` int unsigned NOT NULL DEFAULT '0',
   `Description_Lang_enUS` varchar(300) DEFAULT NULL,
   `Description_Lang_enGB` varchar(300) DEFAULT NULL,
   `Description_Lang_koKR` varchar(300) DEFAULT NULL,
@@ -45,8 +51,8 @@ CREATE TABLE `skillline_dbc`
   `Description_Lang_ptBR` varchar(300) DEFAULT NULL,
   `Description_Lang_itIT` varchar(300) DEFAULT NULL,
   `Description_Lang_Unk` varchar(100) DEFAULT NULL,
-  `Description_Lang_Mask` INT unsigned NOT NULL DEFAULT 0,
-  `SpellIconID` INT NOT NULL DEFAULT 0,
+  `Description_Lang_Mask` int unsigned NOT NULL DEFAULT '0',
+  `SpellIconID` int NOT NULL DEFAULT '0',
   `AlternateVerb_Lang_enUS` varchar(100) DEFAULT NULL,
   `AlternateVerb_Lang_enGB` varchar(100) DEFAULT NULL,
   `AlternateVerb_Lang_koKR` varchar(100) DEFAULT NULL,
@@ -63,20 +69,17 @@ CREATE TABLE `skillline_dbc`
   `AlternateVerb_Lang_ptBR` varchar(100) DEFAULT NULL,
   `AlternateVerb_Lang_itIT` varchar(100) DEFAULT NULL,
   `AlternateVerb_Lang_Unk` varchar(100) DEFAULT NULL,
-  `AlternateVerb_Lang_Mask` INT unsigned NOT NULL DEFAULT 0,
-  `CanLink` INT NOT NULL DEFAULT 0,
+  `AlternateVerb_Lang_Mask` int unsigned NOT NULL DEFAULT '0',
+  `CanLink` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`ID`)
-) ENGINE=MyISAM DEFAULT CHARSET=UTF8MB4;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 
-LOCK TABLES `skillline_dbc` WRITE;
+-- Dumpar data för tabell acore_world.skillline_dbc: 0 rows
+DELETE FROM `skillline_dbc`;
 /*!40000 ALTER TABLE `skillline_dbc` DISABLE KEYS */;
 /*!40000 ALTER TABLE `skillline_dbc` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;

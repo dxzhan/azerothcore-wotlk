@@ -1,6 +1,18 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
- * Copyright (C) 2021+ WarheadCore <https://github.com/WarheadCore>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "StartProcess.h"
@@ -8,7 +20,6 @@
 #include "Log.h"
 #include "Optional.h"
 #include "Util.h"
-#include <filesystem>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/process/args.hpp>
@@ -18,6 +29,7 @@
 #include <boost/process/io.hpp>
 #include <boost/process/pipe.hpp>
 #include <boost/process/search_path.hpp>
+#include <filesystem>
 
 using namespace boost::process;
 using namespace boost::iostreams;
@@ -65,8 +77,8 @@ namespace Acore
 
         if (!secure)
         {
-            LOG_TRACE(logger, "Starting process \"%s\" with arguments: \"%s\".",
-                executable.c_str(), boost::algorithm::join(argsVector, " ").c_str());
+            LOG_TRACE(logger, "Starting process \"{}\" with arguments: \"{}\".",
+                executable, boost::algorithm::join(argsVector, " "));
         }
 
         // prepare file with only read permission (boost process opens with read_write)
@@ -107,12 +119,12 @@ namespace Acore
 
         auto outInfo = MakeACLogSink([&](std::string const& msg)
         {
-            LOG_INFO(logger, "%s", msg.c_str());
+            LOG_INFO(logger, "{}", msg);
         });
 
         auto outError = MakeACLogSink([&](std::string const& msg)
         {
-            LOG_ERROR(logger, "%s", msg.c_str());
+            LOG_ERROR(logger, "{}", msg);
         });
 
         copy(outStream, outInfo);
@@ -124,8 +136,8 @@ namespace Acore
 
         if (!secure)
         {
-            LOG_TRACE(logger, ">> Process \"%s\" finished with return value %i.",
-                executable.c_str(), result);
+            LOG_TRACE(logger, ">> Process \"{}\" finished with return value {}.",
+                executable, result);
         }
 
         return result;
@@ -159,7 +171,6 @@ namespace Acore
 
         std::atomic<bool> was_terminated;
 
-        // Workaround for missing move support in boost < 1.57
         Optional<std::shared_ptr<std::future<int>>> result;
         Optional<std::reference_wrapper<child>> my_child;
 

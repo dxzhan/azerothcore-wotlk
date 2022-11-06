@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
+# This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -11,7 +11,7 @@
 #
 
 # Require version Cmake
-cmake_minimum_required(VERSION 3.16...3.21)
+cmake_minimum_required(VERSION 3.16...3.22)
 
 message(STATUS "CMake version: ${CMAKE_VERSION}")
 
@@ -41,6 +41,8 @@ include(CheckCXXSourceRuns)
 include(CheckIncludeFiles)
 include(ConfigureScripts)
 include(ConfigureModules)
+include(ConfigureApplications)
+include(ConfigureTools)
 
 # some utils for cmake
 include(deps/acore/cmake-utils/utils.cmake)
@@ -96,9 +98,6 @@ include(ConfigInstall)
 
 CU_RUN_HOOK("AFTER_LOAD_CMAKE_MODULES")
 
-# basic packagesearching and setup (further support will be needed, this is a preliminary release!)
-set(ACE_EXPECTED_VERSION 6.0.3)
-
 find_package(PCHSupport)
 find_package(MySQL REQUIRED)
 
@@ -121,14 +120,7 @@ include(src/cmake/showoptions.cmake)
 #
 
 add_subdirectory(deps)
-
-if( SERVERS OR TOOLS)
-    add_subdirectory(src/common)
-endif()
-
-if( TOOLS )
-    add_subdirectory(src/tools)
-endif()
+add_subdirectory(src/common)
 
 #
 # Loading application sources
@@ -139,9 +131,14 @@ CU_RUN_HOOK("BEFORE_SRC_LOAD")
 # add core sources
 add_subdirectory(src)
 
+if (BUILD_APPLICATION_WORLDSERVER)
+  # add modules sources
+  add_subdirectory(modules)
+endif()
+
 CU_RUN_HOOK("AFTER_SRC_LOAD")
 
-if( BUILD_TESTING )
+if (BUILD_TESTING AND BUILD_APPLICATION_WORLDSERVER)
     # we use these flags to get code coverage
     set(UNIT_TEST_CXX_FLAGS "-fprofile-arcs -ftest-coverage -fno-inline")
 

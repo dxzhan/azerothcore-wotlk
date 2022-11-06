@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef __SPELL_H
@@ -19,6 +30,7 @@ class GameObject;
 class DynamicObject;
 class WorldObject;
 class Aura;
+class AuraEffect;
 class SpellScript;
 class SpellEvent;
 class ByteBuffer;
@@ -160,7 +172,7 @@ public:
 
     float GetDist2d() const { return m_src._position.GetExactDist2d(&m_dst._position); }
     float GetSpeedXY() const { return m_speed * cos(m_elevation); }
-    float GetSpeedZ() const { return m_speed * sin(m_elevation); }
+    float GetSpeedZ() const { return m_speed * std::sin(m_elevation); }
 
     void Update(Unit* caster);
     void OutDebug() const;
@@ -202,6 +214,7 @@ struct SpellValue
     uint32    MaxAffectedTargets;
     float     RadiusMod;
     uint8     AuraStackAmount;
+    int32     AuraDuration;
     bool      ForcedCritResult;
 };
 
@@ -252,6 +265,20 @@ struct TargetInfo
 };
 
 static const uint32 SPELL_INTERRUPT_NONPLAYER = 32747;
+
+struct TriggeredByAuraSpellData
+{
+    TriggeredByAuraSpellData() : spellInfo(nullptr), effectIndex(-1), tickNumber(0) {}
+
+    void Init(AuraEffect const* aurEff);
+
+    operator bool() const { return spellInfo != nullptr; }
+    bool operator!() const { return !(bool(*this)); }
+
+    SpellInfo const* spellInfo;
+    int8 effectIndex;
+    uint32 tickNumber;
+};
 
 class Spell
 {
@@ -490,7 +517,7 @@ public:
     void HandleEffects(Unit* pUnitTarget, Item* pItemTarget, GameObject* pGOTarget, uint32 i, SpellEffectHandleMode mode);
     void HandleThreatSpells();
 
-    SpellInfo const* m_spellInfo;
+    SpellInfo const* const m_spellInfo;
     Item* m_CastItem;
     Item* m_weaponItem;
     ObjectGuid m_castItemGUID;
@@ -500,9 +527,22 @@ public:
     SpellCastTargets m_targets;
     SpellCustomErrors m_customError;
 
-    UsedSpellMods m_appliedMods;
+    void AddComboPointGain(Unit* target, int8 amount)
+    {
+        if (target != m_comboTarget)
+        {
+            m_comboTarget = target;
+            m_comboPointGain = amount;
+        }
+        else
+        {
+            m_comboPointGain += amount;
+        }
+    }
+    Unit* m_comboTarget;
+    int8 m_comboPointGain;
 
-    PathGenerator* m_pathFinder; // pussywizard: for precomputing path for charge
+    UsedSpellMods m_appliedMods;
 
     int32 GetCastTime() const { return m_casttime; }
     bool IsAutoRepeat() const { return m_autoRepeat; }
@@ -532,7 +572,6 @@ public:
     Unit* GetCaster() const { return m_caster; }
     Unit* GetOriginalCaster() const { return m_originalCaster; }
     SpellInfo const* GetSpellInfo() const { return m_spellInfo; }
-    void SetSpellInfo(SpellInfo const* info) { m_spellInfo = info; }
     int32 GetPowerCost() const { return m_powerCost; }
 
     bool UpdatePointers();                              // must be used at call Spell code after time delay (non triggered spell cast/update spell call/etc)
@@ -545,7 +584,14 @@ public:
     // xinef: moved to public
     void LoadScripts();
     std::list<TargetInfo>* GetUniqueTargetInfo() { return &m_UniqueTargetInfo; }
-protected:
+
+    [[nodiscard]] uint32 GetTriggeredByAuraTickNumber() const { return m_triggeredByAuraSpell.tickNumber; }
+
+    [[nodiscard]] TriggerCastFlags GetTriggeredCastFlags() const { return _triggeredCastFlags; }
+
+    [[nodiscard]] SpellSchoolMask GetSpellSchoolMask() const { return m_spellSchoolMask; }
+
+ protected:
     bool HasGlobalCooldown() const;
     void TriggerGlobalCooldown();
     void CancelGlobalCooldown();
@@ -561,6 +607,8 @@ protected:
     Unit* m_originalCaster;                             // cached pointer for m_originalCaster, updated at Spell::UpdatePointers()
 
     Spell** m_selfContainer;                            // pointer to our spell container (if applicable)
+
+    std::string GetDebugInfo() const;
 
     //Spell data
     SpellSchoolMask m_spellSchoolMask;                  // Spell school (can be overwrite for some spells (wand shoot for example)
@@ -664,7 +712,7 @@ protected:
     bool UpdateChanneledTargetList();
     bool IsValidDeadOrAliveTarget(Unit const* target) const;
     void HandleLaunchPhase();
-    void DoAllEffectOnLaunchTarget(TargetInfo& targetInfo, float* multiplier, bool firstTarget);
+    void DoAllEffectOnLaunchTarget(TargetInfo& targetInfo, float* multiplier);
 
     void PrepareTargetProcessing();
     void FinishTargetProcessing();
@@ -695,7 +743,7 @@ protected:
     {
         SpellInfo const* triggeredSpell;
         SpellInfo const* triggeredByAura;
-        // uint8 triggeredByEffIdx          This might be needed at a later stage - No need known for now
+        uint8 triggeredByEffIdx;
         int32 chance;
     };
 
@@ -720,11 +768,11 @@ protected:
     // if need this can be replaced by Aura copy
     // we can't store original aura link to prevent access to deleted auras
     // and in same time need aura data and after aura deleting.
-    SpellInfo const* m_triggeredByAuraSpell;
-    int8 m_triggeredByAuraEffectIndex;
+    TriggeredByAuraSpellData m_triggeredByAuraSpell;
 
     bool m_skipCheck;
     uint8 m_auraScaleMask;
+    std::unique_ptr<PathGenerator> m_preGeneratedPath;
 
     // xinef:
     bool _spellTargetsSelected;
@@ -796,13 +844,13 @@ typedef void(Spell::*pEffect)(SpellEffIndex effIndex);
 class ReflectEvent : public BasicEvent
 {
     public:
-        ReflectEvent(Unit* caster, ObjectGuid targetGUID, const SpellInfo* spellInfo) : _caster(caster), _targetGUID(targetGUID), _spellInfo(spellInfo) { }
+        ReflectEvent(Unit* caster, ObjectGuid targetGUID, SpellInfo const* spellInfo) : _caster(caster), _targetGUID(targetGUID), _spellInfo(spellInfo) { }
         bool Execute(uint64 e_time, uint32 p_time) override;
 
     protected:
         Unit* _caster;
         ObjectGuid _targetGUID;
-        const SpellInfo* _spellInfo;
+        SpellInfo const* _spellInfo;
 };
 
 #endif

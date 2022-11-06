@@ -1,13 +1,24 @@
 /*
-* Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
-* Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
-* Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
-*/
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
-#include "karazhan.h"
-#include "ScriptedCreature.h"
 #include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "SpellInfo.h"
+#include "karazhan.h"
 
 enum PrinceSay
 {
@@ -128,12 +139,12 @@ public:
                     creature->AI()->KilledUnit(who);
         }
 
-        void SpellHit(Unit* /*who*/, const SpellInfo* spell) override
+        void SpellHit(Unit* /*who*/, SpellInfo const* spell) override
         {
             if (spell->Id == SPELL_INFERNAL_RELAY)
             {
                 me->SetDisplayId(me->GetUInt32Value(UNIT_FIELD_NATIVEDISPLAYID));
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                me->SetUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
                 HellfireTimer = 4000;
                 CleanupTimer = 170000;
             }
@@ -236,11 +247,11 @@ public:
 
         void EnfeebleHealthEffect()
         {
-            const SpellInfo* info = sSpellMgr->GetSpellInfo(SPELL_ENFEEBLE_EFFECT);
+            SpellInfo const* info = sSpellMgr->GetSpellInfo(SPELL_ENFEEBLE_EFFECT);
             if (!info)
                 return;
 
-            ThreatContainer::StorageType const& t_list = me->getThreatMgr().getThreatList();
+            ThreatContainer::StorageType const& t_list = me->GetThreatMgr().GetThreatList();
             std::vector<Unit*> targets;
 
             if (t_list.empty())
@@ -288,7 +299,7 @@ public:
 
             if ((me->GetMapId() == 532))
             {
-                me->GetRandomNearPosition(pos, 40.0);
+                pos = me->GetRandomNearPosition(40.0);
             }
             else
             {
@@ -303,7 +314,7 @@ public:
                 if (infernal)
                 {
                     infernal->SetDisplayId(INFERNAL_MODEL_INVISIBLE);
-                    infernal->setFaction(me->getFaction());
+                    infernal->SetFaction(me->GetFaction());
                     infernals.push_back(infernal->GetGUID());
                     infernal->SetControlled(true, UNIT_STATE_ROOT);
                     RELAY->AI()->DoCast(infernal, SPELL_INFERNAL_RELAY);
@@ -362,7 +373,7 @@ public:
                     // if phase == 1 target the tank, otherwise anyone but the tank
                     Unit* target = phase == 1
                             ? me->GetVictim()
-                            : SelectTarget(SELECT_TARGET_RANDOM, 1, 100, true);
+                            : SelectTarget(SelectTargetMethod::Random, 1, 100, true);
 
                     if (target)
                     {
@@ -411,7 +422,7 @@ public:
             {
                 if (AmplifyDamageTimer <= diff)
                 {
-                    Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1, 100, true);
+                    Unit* target = SelectTarget(SelectTargetMethod::Random, 1, 100, true);
 
                     if (target)
                     {
@@ -466,7 +477,7 @@ public:
         void Initialize()
         {
             AxesTargetSwitchTimer = 7500;
-            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+            me->SetUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
             me->SetCanDualWield(true);
         }
 
@@ -481,7 +492,7 @@ public:
 
         void changetarget()
         {
-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+            if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0, 100, true))
             {
                 if (me->GetVictim())
                 {

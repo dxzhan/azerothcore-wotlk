@@ -1,14 +1,54 @@
 /*
- * Originally written by Xinef - Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
-*/
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
+#include "ulduar.h"
+#include "CombatAI.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
-#include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellScript.h"
-#include "ulduar.h"
+#include "Vehicle.h"
+
+enum Texts
+{
+    // Freya
+    GOSSIP_MENU_FREYA     = 10324,
+    NPC_TEXT_FREYA        = 14332,
+
+    // Hodir
+    GOSSIP_MENU_HODIR     = 10335,
+    NPC_TEXT_HODIR        = 14326,
+
+    // Mimiron
+    GOSSIP_MENU_MIMIRON   = 10336,
+    NPC_TEXT_MIMIRON      = 14334,
+
+    // Thorim
+    GOSSIP_MENU_THORIM    = 10337,
+    NPC_TEXT_THORIM       = 14333,
+
+    // Confirm assistance
+    GOSSIP_MENU_CONFIRM   = 10333,
+    NPC_TEXT_CONFIRM      = 14325,
+
+    SAY_KEEPER_SELECTED   = 1,
+};
 
 class npc_ulduar_keeper : public CreatureScript
 {
@@ -17,45 +57,75 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Lend us your aid, keeper. Together we shall defeat Yogg-Saron.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
-        return true;
-    }
-
-    bool OnGossipSelect(Player*  /*player*/, Creature* creature, uint32  /*uiSender*/, uint32  /*uiAction*/) override
-    {
-        creature->SetUInt32Value(UNIT_NPC_FLAGS, 0);
-        uint8 _keeper = 0;
+        uint32 gossipMenuId = 0;
+        uint32 gossipTextId = 0;
         switch (creature->GetEntry())
         {
             case NPC_FREYA_GOSSIP:
-                creature->MonsterYell("Eonar, your servant calls for your blessing!", LANG_UNIVERSAL, 0);
-                creature->PlayDirectSound(15535);
-                _keeper = KEEPER_FREYA;
+                gossipMenuId = GOSSIP_MENU_FREYA;
+                gossipTextId = NPC_TEXT_FREYA;
                 break;
             case NPC_HODIR_GOSSIP:
-                creature->MonsterYell("The veil of winter will protect you, champions!", LANG_UNIVERSAL, 0);
-                creature->PlayDirectSound(15559);
-                _keeper = KEEPER_HODIR;
+                gossipMenuId = GOSSIP_MENU_HODIR;
+                gossipTextId = NPC_TEXT_HODIR;
                 break;
             case NPC_MIMIRON_GOSSIP:
-                creature->MonsterYell("Combat matrix enhanced. Behold wonderous rapidity!", LANG_UNIVERSAL, 0);
-                creature->PlayDirectSound(15630);
-                _keeper = KEEPER_MIMIRON;
+                gossipMenuId = GOSSIP_MENU_MIMIRON;
+                gossipTextId = NPC_TEXT_MIMIRON;
                 break;
             case NPC_THORIM_GOSSIP:
-                creature->MonsterYell("Golganneth, lend me your strengh! Grant my mortal allies the power of thunder!", LANG_UNIVERSAL, 0);
-                creature->PlayDirectSound(15750);
-                _keeper = KEEPER_THORIM;
+                gossipMenuId = GOSSIP_MENU_THORIM;
+                gossipTextId = NPC_TEXT_THORIM;
                 break;
         }
 
-        if (creature->GetInstanceScript())
-        {
-            creature->GetInstanceScript()->SetData(TYPE_WATCHERS, _keeper);
-            creature->DespawnOrUnsummon(6000);
-        }
+        AddGossipItemFor(player, gossipMenuId, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        SendGossipMenuFor(player, gossipTextId, creature->GetGUID());
+        return true;
+    }
 
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        ClearGossipMenuFor(player);
+        uint8 _keeper = 0;
+        switch (action)
+        {
+            case GOSSIP_ACTION_INFO_DEF+1:
+                AddGossipItemFor(player, GOSSIP_MENU_CONFIRM, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+                SendGossipMenuFor(player, NPC_TEXT_CONFIRM, creature);
+                break;
+            case GOSSIP_ACTION_INFO_DEF+2:
+            {
+                switch (creature->GetEntry())
+                {
+                    case NPC_FREYA_GOSSIP:
+                        creature->AI()->Talk(SAY_KEEPER_SELECTED);
+                        _keeper = KEEPER_FREYA;
+                        break;
+                    case NPC_HODIR_GOSSIP:
+                        creature->AI()->Talk(SAY_KEEPER_SELECTED);
+                        _keeper = KEEPER_HODIR;
+                        break;
+                    case NPC_MIMIRON_GOSSIP:
+                        creature->AI()->Talk(SAY_KEEPER_SELECTED);
+                        _keeper = KEEPER_MIMIRON;
+                        break;
+                    case NPC_THORIM_GOSSIP:
+                        creature->AI()->Talk(SAY_KEEPER_SELECTED);
+                        _keeper = KEEPER_THORIM;
+                        break;
+                }
+
+                creature->ReplaceAllNpcFlags(UNIT_NPC_FLAG_NONE);
+                CloseGossipMenuFor(player);
+
+                if (creature->GetInstanceScript())
+                {
+                    creature->GetInstanceScript()->SetData(TYPE_WATCHERS, _keeper);
+                    creature->DespawnOrUnsummon(6000);
+                }
+            }
+        }
         return true;
     }
 };
@@ -110,7 +180,8 @@ public:
         void MoveInLineOfSight(Unit* who) override
         {
             if (!activated && who->GetTypeId() == TYPEID_PLAYER)
-                if (me->GetExactDist2d(who) <= 25.0f && me->GetMap()->isInLineOfSight(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 5.0f, who->GetPositionX(), who->GetPositionY(), who->GetPositionZ() + 5.0f, 2, LINEOFSIGHT_ALL_CHECKS))
+                if (me->GetExactDist2d(who) <= 25.0f && me->GetMap()->isInLineOfSight(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ() + 5.0f,
+                    who->GetPositionX(), who->GetPositionY(), who->GetPositionZ() + 5.0f, 2, LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::Nothing))
                 {
                     activated = true;
                     me->RemoveAura(64615);
@@ -124,7 +195,7 @@ public:
                     {
                         float a = rand_norm() * 2 * M_PI;
                         float d = rand_norm() * 4.0f;
-                        if (Creature* c = me->SummonCreature(34137, me->GetPositionX() + cos(a) * d, me->GetPositionY() + sin(a) * d, me->GetPositionZ() + 1.0f, 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000))
+                        if (Creature* c = me->SummonCreature(34137, me->GetPositionX() + cos(a) * d, me->GetPositionY() + std::sin(a) * d, me->GetPositionZ() + 1.0f, 0.0f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 300000))
                             c->AI()->AttackStart(who);
                     }
                 }
@@ -254,7 +325,7 @@ public:
 
         void PassengerBoarded(Unit* p, int8  /*seat*/, bool  /*apply*/) override
         {
-            me->setFaction(p->getFaction());
+            me->SetFaction(p->GetFaction());
             me->SetReactState(REACT_PASSIVE);
         }
 
@@ -269,29 +340,29 @@ public:
                 me->CombatStop(true);
                 me->SetReactState(REACT_PASSIVE);
                 me->SetRegeneratingHealth(false);
-                me->setFaction(31);
-                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+                me->SetFaction(FACTION_PREY);
+                me->SetNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
                 me->CastSpell(me, 64770, true);
             }
         }
 
         void AttackStart(Unit* who) override
         {
-            if (me->getFaction() == 16)
+            if (me->GetFaction() == FACTION_MONSTER_2)
                 ScriptedAI::AttackStart(who);
         }
 
-        void EnterEvadeMode() override
+        void EnterEvadeMode(EvadeReason why) override
         {
-            if (me->getFaction() == 16)
-                ScriptedAI::EnterEvadeMode();
+            if (me->GetFaction() == FACTION_MONSTER_2)
+                ScriptedAI::EnterEvadeMode(why);
         }
 
         void OnCharmed(bool  /*apply*/) override {}
 
         void UpdateAI(uint32 diff) override
         {
-            if (me->getFaction() != 16)
+            if (me->GetFaction() != FACTION_MONSTER_2)
             {
                 if (me->IsAlive() && (me->GetExactDist2dSq(2058.0f, 42.0f) < 25.0f * 25.0f || me->GetExactDist2dSq(2203.0f, 292.0f) < 25.0f * 25.0f || me->GetExactDist2dSq(2125.0f, 170.0f) > 160.0f * 160.0f))
                     Unit::Kill(me, me, false);
@@ -410,6 +481,34 @@ public:
     }
 };
 
+struct npc_salvaged_siege_engine : public VehicleAI
+{
+    npc_salvaged_siege_engine(Creature* creature) : VehicleAI(creature) { }
+
+    bool BeforeSpellClick(Unit* clicker) override
+    {
+        if (Vehicle* vehicle = me->GetVehicleKit())
+        {
+            if (vehicle->IsVehicleInUse())
+            {
+                if (Unit* turret = vehicle->GetPassenger(7))
+                {
+                    if (Vehicle* turretVehicle = me->GetVehicleKit())
+                    {
+                        if (!turretVehicle->IsVehicleInUse())
+                        {
+                            turret->HandleSpellClick(clicker);
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+};
+
 void AddSC_ulduar()
 {
     new npc_ulduar_keeper();
@@ -422,4 +521,6 @@ void AddSC_ulduar()
 
     new AreaTrigger_at_celestial_planetarium_enterance();
     new go_call_tram();
+
+    RegisterCreatureAI(npc_salvaged_siege_engine);
 }

@@ -1,7 +1,18 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* ScriptData
@@ -18,10 +29,10 @@ EndContentData */
 
 #include "PassiveAI.h"
 #include "Player.h"
+#include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "ScriptedEscortAI.h"
 #include "ScriptedGossip.h"
-#include "ScriptMgr.h"
 #include "SpellInfo.h"
 
 // Ours
@@ -54,7 +65,7 @@ public:
             }
         }
 
-        void SpellHit(Unit* caster, const SpellInfo* spellInfo) override
+        void SpellHit(Unit* caster, SpellInfo const* spellInfo) override
         {
             if (caster && spellInfo->Id == 44454)
                 me->GetMotionMaster()->MovePoint(0, *caster);
@@ -65,6 +76,15 @@ public:
     {
         return new npc_attracted_reef_bullAI(creature);
     }
+};
+
+// The cleansing
+enum TurmoilTexts
+{
+    SAY_TURMOIL_0                = 0,
+    SAY_TURMOIL_1                = 1,
+    SAY_TURMOIL_HALF_HP          = 2,
+    SAY_TURMOIL_DEATH            = 3,
 };
 
 class npc_your_inner_turmoil : public CreatureScript
@@ -78,16 +98,18 @@ public:
 
         uint32 timer;
         short phase;
+        bool health50;
 
         void Reset() override
         {
             timer = 0;
             phase = 0;
+            health50 = false;
         }
 
         void UpdateAI(uint32 diff) override
         {
-            if (timer >= 6000 && phase < 4)
+            if (timer >= 6000 && phase < 2)
             {
                 phase++;
                 setphase(phase);
@@ -99,6 +121,33 @@ public:
             DoMeleeAttackIfReady();
         }
 
+        void DamageTaken(Unit*, uint32& /*damage*/, DamageEffectType  /*damagetype*/, SpellSchoolMask  /*damageSchoolMask*/) override
+        {
+            if (HealthBelowPct(50) && !health50)
+            {
+                if (TempSummon const* tempSummon = me->ToTempSummon())
+                {
+                    if (WorldObject* summoner = tempSummon->GetSummonerUnit())
+                    {
+                        Talk(SAY_TURMOIL_HALF_HP, summoner);
+                    }
+                }
+
+                health50 = true;
+            }
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            if (TempSummon const* tempSummon = me->ToTempSummon())
+            {
+                if (WorldObject* summoner = tempSummon->GetSummonerUnit())
+                {
+                    Talk(SAY_TURMOIL_DEATH, summoner);
+                }
+            }
+        }
+
         void setphase(short newPhase)
         {
             Unit* summoner = me->ToTempSummon() ? me->ToTempSummon()->GetSummonerUnit() : nullptr;
@@ -108,24 +157,20 @@ public:
             switch (newPhase)
             {
                 case 1:
-                    me->MonsterWhisper("You think that you can get rid of me through meditation?", summoner->ToPlayer());
+                    Talk(SAY_TURMOIL_0, summoner->ToPlayer());
                     return;
                 case 2:
-                    me->MonsterWhisper("Fool! I will destroy you and finally become that which has been building inside of you all these years!", summoner->ToPlayer());
-                    return;
-                case 3:
-                    me->MonsterWhisper("You cannot defeat me. I'm an inseparable part of you!", summoner->ToPlayer());
-                    return;
-                case 4:
-                    me->MonsterWhisper("NOOOOOOOoooooooooo!", summoner->ToPlayer());
+                {
+                    Talk(SAY_TURMOIL_1, summoner->ToPlayer());
                     me->SetLevel(summoner->getLevel());
-                    me->setFaction(14);
+                    me->SetFaction(FACTION_MONSTER);
                     if (me->GetExactDist(summoner) < 50.0f)
                     {
                         me->UpdatePosition(summoner->GetPositionX(), summoner->GetPositionY(), summoner->GetPositionZ(), 0.0f, true);
                         summoner->CastSpell(me, 50218, true); // clone caster
                         AttackStart(summoner);
                     }
+                }
             }
         }
     };
@@ -143,8 +188,6 @@ public:
 enum Entries
 {
     NPC_APOTHECARY_HANES         = 23784,
-    FACTION_ESCORTEE_A           = 774,
-    FACTION_ESCORTEE_H           = 775,
     NPC_HANES_FIRE_TRIGGER       = 23968,
     QUEST_TRAIL_OF_FIRE          = 11241,
     SPELL_COSMETIC_LOW_POLY_FIRE = 56274,
@@ -160,7 +203,7 @@ public:
     {
         if (quest->GetQuestId() == QUEST_TRAIL_OF_FIRE)
         {
-            creature->setFaction(player->GetTeamId() == TEAM_ALLIANCE ? FACTION_ESCORTEE_A : FACTION_ESCORTEE_H);
+            creature->SetFaction(player->GetTeamId() == TEAM_ALLIANCE ? FACTION_ESCORTEE_A_PASSIVE : FACTION_ESCORTEE_H_PASSIVE);
             CAST_AI(npc_escortAI, (creature->AI()))->Start(true, false, player->GetGUID());
         }
         return true;
@@ -301,9 +344,6 @@ public:
 ## npc_razael_and_lyana
 ######*/
 
-#define GOSSIP_RAZAEL_REPORT "High Executor Anselm wants a report on the situation."
-#define GOSSIP_LYANA_REPORT "High Executor Anselm requests your report."
-
 enum Razael
 {
     QUEST_REPORTS_FROM_THE_FIELD = 11221,
@@ -331,7 +371,7 @@ public:
                 case NPC_RAZAEL:
                     if (!player->GetReqKillOrCastCurrentCount(QUEST_REPORTS_FROM_THE_FIELD, NPC_RAZAEL))
                     {
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_RAZAEL_REPORT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                        AddGossipItemFor(player, 8870, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
                         SendGossipMenuFor(player, GOSSIP_TEXTID_RAZAEL1, creature->GetGUID());
                         return true;
                     }
@@ -339,7 +379,7 @@ public:
                 case NPC_LYANA:
                     if (!player->GetReqKillOrCastCurrentCount(QUEST_REPORTS_FROM_THE_FIELD, NPC_LYANA))
                     {
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LYANA_REPORT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+                        AddGossipItemFor(player, 8879, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
                         SendGossipMenuFor(player, GOSSIP_TEXTID_LYANA1, creature->GetGUID());
                         return true;
                     }

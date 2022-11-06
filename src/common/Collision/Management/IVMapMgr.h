@@ -1,13 +1,25 @@
 /*
- * Copyright (C) 2016+     AzerothCore <www.azerothcore.org>, released under GNU GPL v2 license, you may redistribute it and/or modify it under version 2 of the License, or (at your option), any later version.
- * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
- * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _IVMAPMANAGER_H
 #define _IVMAPMANAGER_H
 
 #include "Define.h"
+#include "ModelIgnoreFlags.h"
 #include "Optional.h"
 #include <string>
 
@@ -24,6 +36,13 @@ namespace VMAP
         VMAP_LOAD_RESULT_ERROR,
         VMAP_LOAD_RESULT_OK,
         VMAP_LOAD_RESULT_IGNORED
+    };
+
+    enum class LoadResult : uint8
+    {
+        Success,
+        FileNotFound,
+        VersionMismatch
     };
 
     #define VMAP_INVALID_HEIGHT       -100000.0f            // for check
@@ -68,12 +87,12 @@ namespace VMAP
 
         virtual int loadMap(const char* pBasePath, unsigned int pMapId, int x, int y) = 0;
 
-        virtual bool existsMap(const char* pBasePath, unsigned int pMapId, int x, int y) = 0;
+        virtual LoadResult existsMap(const char* pBasePath, unsigned int pMapId, int x, int y) = 0;
 
         virtual void unloadMap(unsigned int pMapId, int x, int y) = 0;
         virtual void unloadMap(unsigned int pMapId) = 0;
 
-        virtual bool isInLineOfSight(unsigned int pMapId, float x1, float y1, float z1, float x2, float y2, float z2) = 0;
+        virtual bool isInLineOfSight(unsigned int pMapId, float x1, float y1, float z1, float x2, float y2, float z2, ModelIgnoreFlags ignoreFlags) = 0;
         virtual float getHeight(unsigned int pMapId, float x, float y, float z, float maxSearchDist) = 0;
         /**
         test if we hit an object. return true if we hit one. rx, ry, rz will hold the hit position or the dest position, if no intersection was found

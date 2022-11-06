@@ -1,10 +1,23 @@
 /*
- * Originally written by Xinef - Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
-*/
+ * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by the
+ * Free Software Foundation; either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "Player.h"
-#include "ScriptedCreature.h"
 #include "ScriptMgr.h"
+#include "ScriptedCreature.h"
 #include "SpellAuraEffects.h"
 #include "SpellScript.h"
 #include "ulduar.h"
@@ -309,7 +322,7 @@ public:
                 me->CastSpell(me, SPELL_ELECTRICAL_CHARGE, true);
         }
 
-        void SpellHit(Unit*  /*caster*/, const SpellInfo* spellInfo) override
+        void SpellHit(Unit*  /*caster*/, SpellInfo const* spellInfo) override
         {
             if (spellInfo->Id == SPELL_SUPERCHARGE)
                 UpdatePhase();
@@ -331,7 +344,7 @@ public:
                     events.RepeatEvent(urand(15000, 20000));
                     break;
                 case EVENT_STATIC_DISRUPTION:
-                    if (Unit* pTarget = SelectTarget(SELECT_TARGET_FARTHEST, 0, 0, true))
+                    if (Unit* pTarget = SelectTarget(SelectTargetMethod::MinDistance, 0, 0, true))
                         me->CastSpell(pTarget, SPELL_STATIC_DISRUPTION, false);
 
                     events.RepeatEvent(urand(20000, 40000));
@@ -478,7 +491,7 @@ public:
             Talk(SAY_MOLGEIM_SLAY);
         }
 
-        void SpellHit(Unit*  /*caster*/, const SpellInfo* spellInfo) override
+        void SpellHit(Unit*  /*caster*/, SpellInfo const* spellInfo) override
         {
             if (spellInfo->Id == SPELL_SUPERCHARGE)
                 UpdatePhase();
@@ -510,7 +523,7 @@ public:
                     events.RescheduleEvent(EVENT_SHIELD_OF_RUNES, urand(27000, 34000));
                     break;
                 case EVENT_RUNE_OF_DEATH:
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random))
                         me->CastSpell(target, SPELL_RUNE_OF_DEATH, true);
 
                     Talk(SAY_MOLGEIM_RUNE_DEATH);
@@ -518,7 +531,7 @@ public:
                     break;
                 case EVENT_RUNE_OF_SUMMONING:
                     Talk(SAY_MOLGEIM_SUMMON);
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                         me->CastSpell(target, SPELL_RUNE_OF_SUMMONING);
                     events.RepeatEvent(urand(30000, 45000));
                     break;
@@ -553,7 +566,7 @@ public:
         void MoveInLineOfSight(Unit*) override {}
         void AttackStart(Unit*) override {}
         void UpdateAI(uint32) override {}
-        void EnterEvadeMode() override {}
+        void EnterEvadeMode(EvadeReason /* why */) override {}
         void OnCharmed(bool /*apply*/) override {}
 
         bool _boomed;
@@ -599,7 +612,7 @@ public:
         InstanceScript* pInstance;
         uint32 _phase;
         bool _flyPhase;
-        Unit* _flyTarget;
+        ObjectGuid _flyTargetGUID;
         uint32 _channelTimer;
 
         bool _stunnedAchievement;
@@ -612,7 +625,7 @@ public:
             _channelTimer = 0;
             _phase = 0;
             _flyPhase = false;
-            _flyTarget = nullptr;
+            _flyTargetGUID.Clear();
             _stunnedAchievement = true;
 
             events.Reset();
@@ -698,13 +711,13 @@ public:
             Talk(SAY_BRUNDIR_SLAY);
         }
 
-        void SpellHit(Unit*  /*caster*/, const SpellInfo* spellInfo) override
+        void SpellHit(Unit*  /*caster*/, SpellInfo const* spellInfo) override
         {
             if (spellInfo->Id == SPELL_SUPERCHARGE)
                 UpdatePhase();
         }
 
-        void SpellHitTarget(Unit*  /*target*/, const SpellInfo* spellInfo) override
+        void SpellHitTarget(Unit*  /*target*/, SpellInfo const* spellInfo) override
         {
             if (spellInfo->Id == SPELL_CHAIN_LIGHTNING || spellInfo->Id == uint32(RAID_MODE(61916, 63482))) // Lightning Whirl triggered
                 _stunnedAchievement = false;
@@ -734,7 +747,7 @@ public:
                     _channelTimer = 0;
                     float o = urand(0, 5) * M_PI / 3.0f;
                     me->InterruptNonMeleeSpells(false);
-                    me->GetMotionMaster()->MovePoint(POINT_CHANNEL_STEELBREAKER, 1587.18f + 10.0f * cos(o), 121.02f + 10.0f * sin(o), 427.3f);
+                    me->GetMotionMaster()->MovePoint(POINT_CHANNEL_STEELBREAKER, 1587.18f + 10.0f * cos(o), 121.02f + 10.0f * std::sin(o), 427.3f);
                 }
             }
 
@@ -743,11 +756,14 @@ public:
 
             if (_flyPhase)
             {
-                if (_flyTarget && me->GetDistance2d(_flyTarget) >= 6 )
+                if (Unit* flyTarget = ObjectAccessor::GetUnit(*me, _flyTargetGUID))
                 {
-                    //float speed = me->GetDistance(_flyTarget->GetPositionX(), _flyTarget->GetPositionY(), _flyTarget->GetPositionZ()+15) / (1500.0f * 0.001f);
-                    me->SendMonsterMove(_flyTarget->GetPositionX(), _flyTarget->GetPositionY(), _flyTarget->GetPositionZ() + 15, 1500, SPLINEFLAG_FLYING);
-                    me->SetPosition(_flyTarget->GetPositionX(), _flyTarget->GetPositionY(), _flyTarget->GetPositionZ(), _flyTarget->GetOrientation());
+                    if (me->GetDistance2d(flyTarget) >= 6)
+                    {
+                        //float speed = me->GetDistance(_flyTarget->GetPositionX(), _flyTarget->GetPositionY(), _flyTarget->GetPositionZ()+15) / (1500.0f * 0.001f);
+                        me->SendMonsterMove(flyTarget->GetPositionX(), flyTarget->GetPositionY(), flyTarget->GetPositionZ() + 15, 1500, SPLINEFLAG_FLYING);
+                        me->SetPosition(flyTarget->GetPositionX(), flyTarget->GetPositionY(), flyTarget->GetPositionZ(), flyTarget->GetOrientation());
+                    }
                 }
             }
 
@@ -758,7 +774,7 @@ public:
             switch (events.ExecuteEvent())
             {
                 case EVENT_CHAIN_LIGHTNING:
-                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                    if (Unit* target = SelectTarget(SelectTargetMethod::Random, 0))
                         me->CastSpell(target, SPELL_CHAIN_LIGHTNING, false);
 
                     events.RepeatEvent(urand(9000, 17000));
@@ -781,7 +797,8 @@ public:
                         Talk(SAY_BRUNDIR_FLIGHT);
 
                         _flyPhase = true;
-                        _flyTarget = me->GetVictim();
+                        Unit* oldVictim = me->GetVictim();
+                        _flyTargetGUID = oldVictim->GetGUID();
                         me->SetRegeneratingHealth(false);
                         me->SetDisableGravity(true);
 
@@ -789,8 +806,8 @@ public:
                         me->StopMoving();
                         me->SetReactState(REACT_PASSIVE);
                         me->SetGuidValue(UNIT_FIELD_TARGET, ObjectGuid::Empty);
-                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
-                        me->SendMonsterMove(_flyTarget->GetPositionX(), _flyTarget->GetPositionY(), _flyTarget->GetPositionZ() + 15, 1500, SPLINEFLAG_FLYING);
+                        me->SetUnitFlag(UNIT_FLAG_STUNNED);
+                        me->SendMonsterMove(oldVictim->GetPositionX(), oldVictim->GetPositionY(), oldVictim->GetPositionZ() + 15, 1500, SPLINEFLAG_FLYING);
 
                         me->CastSpell(me, SPELL_LIGHTNING_TENDRILS, true);
                         me->CastSpell(me, 61883, true);
@@ -809,11 +826,13 @@ public:
                     me->SetCanFly(false);
                     me->SetReactState(REACT_AGGRESSIVE);
                     me->SetDisableGravity(false);
-                    if (_flyTarget)
-                        me->Attack(_flyTarget, false);
+                    if (Unit* flyTarget = ObjectAccessor::GetUnit(*me, _flyTargetGUID))
+                    {
+                        me->Attack(flyTarget, false);
+                    }
 
                     me->SetRegeneratingHealth(true);
-                    _flyTarget = nullptr;
+                    _flyTargetGUID.Clear();
                     me->RemoveAura(SPELL_LIGHTNING_TENDRILS);
                     me->RemoveAura(61883);
                     DoResetThreat();
