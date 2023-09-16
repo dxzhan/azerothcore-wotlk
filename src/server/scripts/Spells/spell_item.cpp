@@ -23,7 +23,9 @@
 
 #include "Battleground.h"
 #include "GameTime.h"
+#include "ObjectMgr.h"
 #include "Player.h"
+#include "Pet.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "SkillDiscovery.h"
@@ -623,19 +625,19 @@ class spell_item_feast : public SpellScript
             {
                 case SPELL_GREAT_FEAST:
                     if (BroadcastText const* bct = sObjectMgr->GetBroadcastText(GREAT_FEAST_BROADCAST_TEXT_ID_PREPARE))
-                        player->TextEmote(bct->GetText(loc_idx, player->getGender()).c_str(), player);
+                        player->TextEmote(bct->GetText(loc_idx, player->getGender()), player);
                     break;
                 case SPELL_FISH_FEAST:
                     if (BroadcastText const* bct = sObjectMgr->GetBroadcastText(FISH_FEAST_BROADCAST_TEXT_ID_PREPARE))
-                        player->TextEmote(bct->GetText(loc_idx, player->getGender()).c_str(), player);
+                        player->TextEmote(bct->GetText(loc_idx, player->getGender()), player);
                     break;
                 case SPELL_SMALL_FEAST:
                     if (BroadcastText const* bct = sObjectMgr->GetBroadcastText(SMALL_FEAST_BROADCAST_TEXT_ID_PREPARE))
-                        player->TextEmote(bct->GetText(loc_idx, player->getGender()).c_str(), player);
+                        player->TextEmote(bct->GetText(loc_idx, player->getGender()), player);
                     break;
                 case SPELL_GIGANTIC_FEAST:
                     if (BroadcastText const* bct = sObjectMgr->GetBroadcastText(GIGANTIC_FEAST_BROADCAST_TEXT_ID_PREPARE))
-                        player->TextEmote(bct->GetText(loc_idx, player->getGender()).c_str(), player);
+                        player->TextEmote(bct->GetText(loc_idx, player->getGender()), player);
                     break;
             }
         }
@@ -809,6 +811,44 @@ class spell_item_gnomish_shrink_ray : public SpellScript
     }
 };
 
+enum GoblinWeatherMachiene
+{
+    SPELL_PERSONALIZED_WEATHER_RAIN = 46736,
+    SPELL_PERSONALIZED_WEATHER_SNOW = 46738,
+    SPELL_PERSONALIZED_WEATHER_SUN  = 46739,
+    SPELL_PERSONALIZED_WEATHER_CLOUDS = 46740
+};
+
+uint32 WeatherForcast()
+{
+    if (!SpellScript::ValidateSpellInfo({
+        SPELL_PERSONALIZED_WEATHER_RAIN,
+        SPELL_PERSONALIZED_WEATHER_SNOW,
+        SPELL_PERSONALIZED_WEATHER_SUN,
+        SPELL_PERSONALIZED_WEATHER_CLOUDS
+        }))
+        return 0;
+
+    uint32 spellId = 0;
+    switch (urand(0, 3))
+    {
+        case 0:
+            spellId = SPELL_PERSONALIZED_WEATHER_RAIN;
+            break;
+        case 1:
+            spellId = SPELL_PERSONALIZED_WEATHER_SNOW;
+            break;
+        case 2:
+            spellId = SPELL_PERSONALIZED_WEATHER_SUN;
+            break;
+        case 3:
+            spellId = SPELL_PERSONALIZED_WEATHER_CLOUDS;
+            break;
+    }
+
+    return spellId;
+}
+
 class spell_item_goblin_weather_machine : public SpellScript
 {
     PrepareSpellScript(spell_item_goblin_weather_machine);
@@ -817,18 +857,13 @@ class spell_item_goblin_weather_machine : public SpellScript
     {
         if (Unit* target = GetHitUnit())
         {
-            uint32 spellId = 46736;
-            if (uint8 add = urand(0, 3))
-                spellId += add + 1;
-
-            target->CastSpell(target, spellId, true);
+            target->CastSpell(target, WeatherForcast(), true);
         }
     }
 
     void Register() override
     {
-        if (m_scriptSpellId == 46203)
-            OnEffectHitTarget += SpellEffectFn(spell_item_goblin_weather_machine::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+        OnEffectHitTarget += SpellEffectFn(spell_item_goblin_weather_machine::HandleScriptEffect, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
     }
 };
 
@@ -841,17 +876,12 @@ class spell_item_goblin_weather_machine_aura : public AuraScript
         if (roll_chance_i(50))
             return;
 
-        uint32 spellId = 46736;
-        if (uint8 add = urand(0, 3))
-            spellId += add + 1;
-
-        GetUnitOwner()->CastSpell(GetUnitOwner(), spellId, true);
+        GetUnitOwner()->CastSpell(GetUnitOwner(), WeatherForcast(), true);
     }
 
     void Register() override
     {
-        if (m_scriptSpellId != 46203)
-            AfterEffectRemove += AuraEffectRemoveFn(spell_item_goblin_weather_machine_aura::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectRemove += AuraEffectRemoveFn(spell_item_goblin_weather_machine_aura::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
@@ -2945,8 +2975,9 @@ class spell_item_nigh_invulnerability : public SpellScript
 
 enum Poultryzer
 {
-    SPELL_POULTRYIZER_SUCCESS    = 30501,
-    SPELL_POULTRYIZER_BACKFIRE   = 30504,
+    SPELL_POULTRYIZER_SUCCESS_1  = 30501,
+    SPELL_POULTRYIZER_SUCCESS_2  = 30504, // malfunction
+    SPELL_POULTRYIZER_BACKFIRE   = 30506, // Not removed on damage
 };
 
 class spell_item_poultryizer : public SpellScript
@@ -2955,13 +2986,22 @@ class spell_item_poultryizer : public SpellScript
 
     bool Validate(SpellInfo const* /*spell*/) override
     {
-        return ValidateSpellInfo({ SPELL_POULTRYIZER_SUCCESS, SPELL_POULTRYIZER_BACKFIRE });
+        return ValidateSpellInfo({ SPELL_POULTRYIZER_SUCCESS_1, SPELL_POULTRYIZER_SUCCESS_2, SPELL_POULTRYIZER_BACKFIRE });
     }
 
     void HandleDummy(SpellEffIndex /* effIndex */)
     {
         if (GetCastItem() && GetHitUnit())
-            GetCaster()->CastSpell(GetHitUnit(), roll_chance_i(80) ? SPELL_POULTRYIZER_SUCCESS : SPELL_POULTRYIZER_BACKFIRE, true, GetCastItem());
+        {
+            if (roll_chance_i(80))
+            {
+                GetCaster()->CastSpell(GetHitUnit(), roll_chance_i(80) ? SPELL_POULTRYIZER_SUCCESS_1 : SPELL_POULTRYIZER_SUCCESS_2, true, GetCastItem());
+            }
+            else
+            {
+                GetCaster()->CastSpell(GetCaster(),  SPELL_POULTRYIZER_BACKFIRE, true, GetCastItem());
+            }
+        }
     }
 
     void Register() override
@@ -3757,6 +3797,66 @@ class spell_item_green_whelp_armor : public AuraScript
     }
 };
 
+// 37678 - elixir of shadows
+/// @todo Temporary fix until pet restrictions vs player restrictions are investigated
+class spell_item_elixir_of_shadows : public SpellScript
+{
+    PrepareSpellScript(spell_item_elixir_of_shadows);
+
+    void HandleEffect(SpellEffIndex /*effIndex*/)
+    {
+        if (Player* player = GetCaster()->ToPlayer())
+            if (Pet* pet = player->GetPet())
+                pet->AddAura(37678 /*Elixir of Shadows*/, pet);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_item_elixir_of_shadows::HandleEffect, EFFECT_0, SPELL_EFFECT_APPLY_AURA);
+        OnEffectHitTarget += SpellEffectFn(spell_item_elixir_of_shadows::HandleEffect, EFFECT_1, SPELL_EFFECT_APPLY_AURA);
+    }
+};
+
+enum TrollDice
+{
+    TEXT_WORN_TROLL_DICE = 26152
+};
+
+// 47776 - Roll 'dem Bones
+class spell_item_worn_troll_dice : public SpellScript
+{
+    PrepareSpellScript(spell_item_worn_troll_dice);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        if (!sObjectMgr->GetBroadcastText(TEXT_WORN_TROLL_DICE))
+            return false;
+        return true;
+    }
+
+    bool Load() override
+    {
+        return GetCaster()->GetTypeId() == TYPEID_PLAYER;
+    }
+
+    void HandleScript(SpellEffIndex /*effIndex*/)
+    {
+        GetCaster()->TextEmote(TEXT_WORN_TROLL_DICE, GetHitUnit());
+
+        static uint32 const minimum = 1;
+        static uint32 const maximum = 6;
+
+        // roll twice
+        GetCaster()->ToPlayer()->DoRandomRoll(minimum, maximum);
+        GetCaster()->ToPlayer()->DoRandomRoll(minimum, maximum);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_item_worn_troll_dice::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
 void AddSC_item_spell_scripts()
 {
     RegisterSpellScript(spell_item_massive_seaforium_charge);
@@ -3783,7 +3883,8 @@ void AddSC_item_spell_scripts()
     RegisterSpellScript(spell_item_strong_anti_venom);
     RegisterSpellScript(spell_item_anti_venom);
     RegisterSpellScript(spell_item_gnomish_shrink_ray);
-    RegisterSpellAndAuraScriptPair(spell_item_goblin_weather_machine, spell_item_goblin_weather_machine_aura);
+    RegisterSpellScript(spell_item_goblin_weather_machine);
+    RegisterSpellScript(spell_item_goblin_weather_machine_aura);
     RegisterSpellScript(spell_item_light_lamp);
     RegisterSpellScript(spell_item_fetch_ball);
     RegisterSpellScript(spell_item_oracle_ablutions);
@@ -3873,4 +3974,6 @@ void AddSC_item_spell_scripts()
     RegisterSpellScript(spell_item_snowman);
     RegisterSpellScript(spell_item_freeze_rookery_egg);
     RegisterSpellScript(spell_item_green_whelp_armor);
+    RegisterSpellScript(spell_item_elixir_of_shadows);
+    RegisterSpellScript(spell_item_worn_troll_dice);
 }

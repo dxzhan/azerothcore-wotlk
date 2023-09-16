@@ -567,6 +567,12 @@ void WorldSession::HandleRandomRollOpcode(WorldPackets::Misc::RandomRollClient& 
     minimum = packet.Min;
     maximum = packet.Max;
 
+    /** error handling **/
+    if (minimum > maximum || maximum > 10000) // < 32768 for urand call
+    {
+        return;
+    }
+
     GetPlayer()->DoRandomRoll(minimum, maximum);
 }
 
@@ -778,14 +784,15 @@ void WorldSession::HandleRaidReadyCheckOpcode(WorldPacket& recvData)
 
 void WorldSession::HandleRaidReadyCheckFinishedOpcode(WorldPacket& /*recvData*/)
 {
-    //Group* group = GetPlayer()->GetGroup();
-    //if (!group)
-    //    return;
+    Group* group = GetPlayer()->GetGroup();
+    if (!group)
+        return;
 
-    //if (!group->IsLeader(GetPlayer()->GetGUID()) && !group->IsAssistant(GetPlayer()->GetGUID()))
-    //    return;
+    if (!group->IsLeader(GetPlayer()->GetGUID()) && !group->IsAssistant(GetPlayer()->GetGUID()))
+        return;
 
-    // Is any reaction need?
+    WorldPacket data(MSG_RAID_READY_CHECK_FINISHED);
+    group->BroadcastPacket(&data, true, -1);
 }
 
 void WorldSession::BuildPartyMemberStatsChangedPacket(Player* player, WorldPacket* data)
