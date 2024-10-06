@@ -52,6 +52,17 @@ inline uint8 GetEruptionSection(float x, float y)
     return 3;
 }
 
+ObjectData const creatureData[] =
+{
+    { NPC_RAZUVIOUS, DATA_RAZUVIOUS },
+    { 0,             0              }
+};
+
+ObjectData const gameObjectData[] =
+{
+    { 0,             0              }
+};
+
 class instance_naxxramas : public InstanceMapScript
 {
 public:
@@ -68,6 +79,7 @@ public:
         {
             SetHeaders(DataHeader);
             SetBossNumber(MAX_ENCOUNTERS);
+            LoadObjectData(creatureData, gameObjectData);
             for (auto& i : HeiganEruption)
                 i.clear();
 
@@ -194,7 +206,7 @@ public:
 
         void OnCreatureCreate(Creature* creature) override
         {
-            switch(creature->GetEntry())
+            switch (creature->GetEntry())
             {
                 case NPC_PATCHWERK:
                     _patchwerkGUID = creature->GetGUID();
@@ -253,6 +265,8 @@ public:
                     _lichkingGUID = creature->GetGUID();
                     return;
             }
+
+            InstanceScript::OnCreatureCreate(creature);
         }
 
         void OnGameObjectCreate(GameObject* pGo) override
@@ -263,7 +277,7 @@ public:
                 return;
             }
 
-            switch(pGo->GetEntry())
+            switch (pGo->GetEntry())
             {
                 case GO_PATCHWERK_GATE:
                     _patchwerkGateGUID = pGo->GetGUID();
@@ -498,6 +512,8 @@ public:
                     }
                     break;
             }
+
+            InstanceScript::OnGameObjectCreate(pGo);
         }
 
         void OnGameObjectRemove(GameObject* pGo) override
@@ -605,7 +621,7 @@ public:
 
         void SetData(uint32 id, uint32 data) override
         {
-            switch(id)
+            switch (id)
             {
                 case DATA_ABOMINATION_KILLED:
                     abominationsKilled++;
@@ -752,7 +768,7 @@ public:
                 return false;
 
             // Bosses data
-            switch(bossId)
+            switch (bossId)
             {
                 case BOSS_KELTHUZAD:
                     if (state == NOT_STARTED)
@@ -1224,4 +1240,3 @@ void AddSC_instance_naxxramas()
     new boss_naxxramas_misc();
     new at_naxxramas_hub_portal();
 }
-
