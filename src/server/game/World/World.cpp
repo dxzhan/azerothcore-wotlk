@@ -92,6 +92,7 @@
 #include "WhoListCacheMgr.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "WorldState.h"
 #include <boost/asio/ip/address.hpp>
 #include <cmath>
 
@@ -1817,6 +1818,9 @@ void World::SetInitialWorldSettings()
     LOG_INFO("server.loading", "Loading Vehicle Accessories...");
     sObjectMgr->LoadVehicleAccessories();                       // must be after LoadCreatureTemplates() and LoadNPCSpellClickSpells()
 
+    LOG_INFO("server.loading", "Loading Vehicle Seat Addon Data...");
+    sObjectMgr->LoadVehicleSeatAddon();                         // must be after loading DBC
+
     LOG_INFO("server.loading", "Loading SpellArea Data...");                // must be after quest load
     sSpellMgr->LoadSpellAreas();
 
@@ -2055,8 +2059,11 @@ void World::SetInitialWorldSettings()
     LOG_INFO("server.loading", "Initialize Game Time and Timers");
     LOG_INFO("server.loading", " ");
 
-    LoginDatabase.Execute("INSERT INTO uptime (realmid, starttime, uptime, revision) VALUES ({}, {}, 0, '{}')",
-                           realm.Id.Realm, uint32(GameTime::GetStartTime().count()), GitRevision::GetFullVersion());       // One-time query
+    LoginDatabasePreparedStatement* stmt = LoginDatabase.GetPreparedStatement(LOGIN_INS_UPTIME);
+    stmt->SetData(0, realm.Id.Realm);
+    stmt->SetData(1, uint32(GameTime::GetStartTime().count()));
+    stmt->SetData(2, GitRevision::GetFullVersion());
+    LoginDatabase.Execute(stmt);
 
     _timers[WUPDATE_WEATHERS].SetInterval(1 * IN_MILLISECONDS);
     _timers[WUPDATE_AUCTIONS].SetInterval(MINUTE * IN_MILLISECONDS);
@@ -2406,6 +2413,11 @@ void World::Update(uint32 diff)
     {
         METRIC_TIMER("world_update_time", METRIC_TAG("type", "Update outdoor pvp"));
         sOutdoorPvPMgr->Update(diff);
+    }
+
+    {
+        METRIC_TIMER("world_update_time", METRIC_TAG("type", "Update worldstate"));
+        sWorldState->Update(diff);
     }
 
     {
