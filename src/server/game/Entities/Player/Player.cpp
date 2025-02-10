@@ -1026,6 +1026,9 @@ void Player::setDeathState(DeathState s, bool /*despawn = false*/)
             return;
         }
 
+        // clear all pending spell cast requests when dying
+        SpellQueue.clear();
+
         // drunken state is cleared on death
         SetDrunkValue(0);
         // lost combo points at any target (targeted combo points clear in Unit::setDeathState)
@@ -1337,7 +1340,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         return false;
     }
 
-    if (AccountMgr::IsPlayerAccount(GetSession()->GetSecurity()) && DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, mapid, this))
+    if (AccountMgr::IsPlayerAccount(GetSession()->GetSecurity()) && sDisableMgr->IsDisabledFor(DISABLE_TYPE_MAP, mapid, this))
     {
         LOG_ERROR("entities.player", "Player ({}, name: {}) tried to enter a forbidden map {}", GetGUID().ToString(), GetName(), mapid);
         SendTransferAborted(mapid, TRANSFER_ABORT_MAP_NOT_ALLOWED);
@@ -1889,8 +1892,27 @@ void Player::Regenerate(Powers power)
                 }
             }
             break;
-        case POWER_ENERGY:                                  // Regenerate energy (rogue)
-            addvalue += 0.01f * m_regenTimer * sWorld->getRate(RATE_POWER_ENERGY);
+        case POWER_ENERGY:
+            {
+                float baseRegenRate = 10.0f * sWorld->getRate(RATE_POWER_ENERGY);
+                float hasteModifier = 1.0f;
+
+                // Apply Vitality
+                if (HasAura(61329))
+                    hasteModifier += 0.25f;
+
+                // Apply Overkill
+                if (HasAura(58426))
+                    hasteModifier += 0.30f;
+
+                // Apply Adrenaline Rush
+                if (HasAura(13750))
+                    hasteModifier += 1.0f;
+
+                float adjustedRegenRate = baseRegenRate * hasteModifier;
+
+                addvalue += adjustedRegenRate * 0.001f * m_regenTimer;
+            }
             break;
         case POWER_RUNIC_POWER:
             {
@@ -2397,7 +2419,7 @@ void Player::GiveXP(uint32 xp, Unit* victim, float group_rate, bool isLFGReward)
     // Favored experience increase START
     uint32 zone = GetZoneId();
     float favored_exp_mult = 0;
-    if ((zone == 3483 || zone == 3562 || zone == 3836 || zone == 3713 || zone == 3714) && (HasAura(32096) || HasAura(32098)))
+    if ((zone == 3483 || zone == 3562 || zone == 3836 || zone == 3713 || zone == 3714) && HasAnyAuras(32096 /*Thrallmar's Favor*/, 32098 /*Honor Hold's Favor*/))
         favored_exp_mult = 0.05f; // Thrallmar's Favor and Honor Hold's Favor
 
     xp = uint32(xp * (1 + favored_exp_mult));
@@ -4469,6 +4491,9 @@ void Player::BuildPlayerRepop()
 
 void Player::ResurrectPlayer(float restore_percent, bool applySickness)
 {
+    if (!sScriptMgr->CanPlayerResurrect(this))
+        return;
+
     WorldPacket data(SMSG_DEATH_RELEASE_LOC, 4 * 4);        // remove spirit healer position
     data << uint32(-1);
     data << float(0);
@@ -5960,7 +5985,7 @@ void Player::RewardReputation(Unit* victim)
     if (!victim || victim->IsPlayer())
         return;
 
-    if (victim->ToCreature()->IsReputationGainDisabled())
+    if (victim->ToCreature()->IsReputationRewardDisabled())
         return;
 
     ReputationOnKillEntry const* Rep = sObjectMgr->GetReputationOnKilEntry(victim->ToCreature()->GetCreatureTemplate()->Entry);
@@ -7863,7 +7888,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             if (loot_type == LOOT_FISHING)
                 go->GetFishLoot(loot, this);
             else if (loot_type == LOOT_FISHING_JUNK)
-                go->GetFishLootJunk(loot, this);
+                go->GetFishLoot(loot, this, true);
 
             if (go->GetGOInfo()->type == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
             {
@@ -8824,6 +8849,8 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
                 break;
         }
     }
+
+    sWorldState->FillInitialWorldStates(data, zoneid, areaid);
 
     uint16 length = (data.wpos() - countPos) / 8;
     data.put<uint16>(countPos, length);
@@ -10206,22 +10233,25 @@ void Player::LeaveAllArenaTeams(ObjectGuid guid)
     } while (result->NextRow());
 }
 
-void Player::SetRestBonus(float rest_bonus_new)
+void Player::SetRestBonus(float restBonusNew)
 {
     // Prevent resting on max level
     if (GetLevel() >= sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
-        rest_bonus_new = 0;
+        restBonusNew = 0;
 
-    if (rest_bonus_new < 0)
-        rest_bonus_new = 0;
+    if (restBonusNew < 0)
+        restBonusNew = 0;
 
-    float rest_bonus_max = (float)GetUInt32Value(PLAYER_NEXT_LEVEL_XP) * 1.5f / 2;
+    // Fetch rest bonus multiplier from cached configuration
+    float restBonusMultiplier = sWorld->getRate(RATE_REST_MAX_BONUS);
 
-    if (rest_bonus_new > rest_bonus_max)
-        _restBonus = rest_bonus_max;
+    // Calculate rest bonus max using the multiplier
+    float restBonusMax = (float)GetUInt32Value(PLAYER_NEXT_LEVEL_XP) * restBonusMultiplier / 2;
+
+    if (restBonusNew > restBonusMax)
+        _restBonus = restBonusMax;
     else
-        _restBonus = rest_bonus_new;
-
+        _restBonus = restBonusNew;
     // update data for client
     if ((GetsRecruitAFriendBonus(true) && (GetSession()->IsARecruiter() || GetSession()->GetRecruiterId() != 0)))
         SetByteValue(PLAYER_BYTES_2, 3, REST_STATE_RAF_LINKED);
@@ -12680,17 +12710,11 @@ bool Player::isHonorOrXPTarget(Unit* victim) const
 
     // Victim level less gray level
     if (v_level <= k_grey)
-    {
         return false;
-    }
 
     if (victim->IsCreature())
-    {
-        if (victim->IsTotem() || victim->IsCritter() || victim->IsPet() || (victim->ToCreature()->GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_XP))
-        {
+        if (victim->IsTotem() || victim->IsCritter() || victim->IsPet() || victim->ToCreature()->HasFlagsExtra(CREATURE_FLAG_EXTRA_NO_XP))
             return false;
-        }
-    }
 
     return true;
 }
@@ -13075,7 +13099,7 @@ PartyResult Player::CanUninviteFromGroup(ObjectGuid targetPlayerGUID) const
     return ERR_PARTY_RESULT_OK;
 }
 
-bool Player::isUsingLfg()
+bool Player::IsUsingLfg()
 {
     return sLFGMgr->GetState(GetGUID()) != lfg::LFG_STATE_NONE;
 }
