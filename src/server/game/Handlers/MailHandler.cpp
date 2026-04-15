@@ -1,14 +1,14 @@
 /*
  * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Affero General Public License as published by the
- * Free Software Foundation; either version 3 of the License, or (at your
- * option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
@@ -295,12 +295,16 @@ void WorldSession::HandleSendMail(WorldPacket& recvData)
 
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
+    std::string itemLogStr = "";
     if (items_count > 0 || money > 0)
     {
         if (items_count > 0)
         {
             for (uint8 i = 0; i < items_count; ++i)
             {
+                // log item
+                itemLogStr += Acore::StringFormat("{} (Entry: {}) x{}, ", items[i]->GetTemplate()->Name1, items[i]->GetEntry(), items[i]->GetCount());
+
                 Item* item = items[i];
 
                 item->SetNotRefundable(GetPlayer()); // makes the item no longer refundable
@@ -342,6 +346,10 @@ void WorldSession::HandleSendMail(WorldPacket& recvData)
 
     player->SaveInventoryAndGoldToDB(trans);
     CharacterDatabase.CommitTransaction(trans);
+
+    LOG_INFO("entities.player.mail", "Mail: Account: {} (IP: {}), Player [{}] ({}) sent mail to Player [{}] ({}): subject='{}', body='{}', {} copper, {} COD copper, sent item(s) [{}]",
+        GetAccountId(), GetRemoteAddress(), player->GetName(), player->GetGUID().GetCounter(),
+        receiver, receiverGuid.GetCounter(), subject, body, money, COD, itemLogStr);
 }
 
 //called when mail is read

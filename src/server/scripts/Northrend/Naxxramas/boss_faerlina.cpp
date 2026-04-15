@@ -1,14 +1,14 @@
 /*
  * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Affero General Public License as published by the
- * Free Software Foundation; either version 3 of the License, or (at your
- * option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
@@ -18,6 +18,7 @@
 #include "CreatureScript.h"
 #include "ScriptedCreature.h"
 #include "SpellInfo.h"
+#include "SpellMgr.h"
 #include "naxxramas.h"
 
 enum Yells
@@ -37,7 +38,6 @@ enum Spells
     SPELL_RAIN_OF_FIRE                  = 28794,
     SPELL_FRENZY                        = 28798,
     SPELL_WIDOWS_EMBRACE                = 28732,
-    SPELL_MINION_WIDOWS_EMBRACE         = 54097
 };
 
 enum Groups
@@ -83,16 +83,16 @@ public:
             BossAI::Reset();
             summons.DespawnAll();
             SummonHelpers();
-            if (GameObject* go = me->GetMap()->GetGameObject(instance->GetGuidData(DATA_FAERLINA_WEB)))
-                go->SetGoState(GO_STATE_ACTIVE);
         }
 
         void JustEngagedWith(Unit* who) override
         {
             BossAI::JustEngagedWith(who);
-            me->CallForHelp(VISIBLE_RANGE);
-            summons.DoZoneInCombat();
             Talk(SAY_AGGRO);
+
+            scheduler.Schedule(1200ms, [this](TaskContext /*context*/) {
+                this->summons.DoZoneInCombat();
+            });
 
             ScheduleTimedEvent(7s, 15s, [&]{
                 if (!me->HasAura(SPELL_WIDOWS_EMBRACE))
@@ -114,9 +114,6 @@ public:
                 else
                     context.Repeat(30s);
             });
-
-            if (GameObject* go = me->GetMap()->GetGameObject(instance->GetGuidData(DATA_FAERLINA_WEB)))
-                go->SetGoState(GO_STATE_READY);
         }
 
         void MoveInLineOfSight(Unit* who) override
@@ -137,20 +134,18 @@ public:
             if (!urand(0, 3))
                 Talk(SAY_SLAY);
 
-            instance->SetData(DATA_IMMORTAL_FAIL, 0);
+            instance->StorePersistentData(PERSISTENT_DATA_IMMORTAL_FAIL, 1);
         }
 
         void JustDied(Unit*  killer) override
         {
             BossAI::JustDied(killer);
             Talk(SAY_DEATH);
-            if (GameObject* go = me->GetMap()->GetGameObject(instance->GetGuidData(DATA_FAERLINA_WEB)))
-                go->SetGoState(GO_STATE_ACTIVE);
         }
 
         void SpellHit(Unit* caster, SpellInfo const* spell) override
         {
-            if (spell->Id == RAID_MODE(SPELL_WIDOWS_EMBRACE, SPELL_MINION_WIDOWS_EMBRACE))
+            if (spell->Id == sSpellMgr->GetSpellIdForDifficulty(SPELL_WIDOWS_EMBRACE, me))
             {
                 Talk(EMOTE_WIDOWS_EMBRACE);
                 scheduler.RescheduleGroup(GROUP_FRENZY, 1min);

@@ -1,32 +1,26 @@
 /*
  * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Affero General Public License as published by the
- * Free Software Foundation; either version 3 of the License, or (at your
- * option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ScriptData
-Name: list_commandscript
-%Complete: 100
-Comment: All list related commands
-Category: commandscripts
-EndScriptData */
-
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Creature.h"
 #include "DBCStores.h"
 #include "DatabaseEnv.h"
+#include "GameTime.h"
 #include "GameObject.h"
 #include "Language.h"
 #include "MapMgr.h"
@@ -52,10 +46,11 @@ public:
 
         static ChatCommandTable listCommandTable =
         {
-            { "creature", HandleListCreatureCommand,    SEC_MODERATOR, Console::Yes },
-            { "item",     HandleListItemCommand,        SEC_MODERATOR, Console::Yes },
-            { "object",   HandleListObjectCommand,      SEC_MODERATOR, Console::Yes },
-            { "auras",    listAurasCommandTable },
+            { "creature",  HandleListCreatureCommand,    SEC_MODERATOR, Console::Yes },
+            { "item",      HandleListItemCommand,        SEC_MODERATOR, Console::Yes },
+            { "object",    HandleListObjectCommand,      SEC_MODERATOR, Console::Yes },
+            { "auras",     listAurasCommandTable },
+            { "respawns",  HandleListRespawnsCommand,    SEC_GAMEMASTER, Console::No },
         };
         static ChatCommandTable commandTable =
         {
@@ -520,6 +515,58 @@ public:
         {
             std::string name = spellInfo->SpellName[locale];
             return Utf8FitTo(name, namePart);
+        }
+
+        return true;
+    }
+
+    static bool HandleListRespawnsCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player)
+            return false;
+
+        Map* map = player->GetMap();
+        uint32 count = 0;
+        time_t now = GameTime::GetGameTime().count();
+
+        handler->PSendSysMessage(LANG_LIST_RESPAWNS_CREATURE_HEADER, map->GetId(), map->GetInstanceId());
+        for (auto const& pair : map->GetCreatureRespawnTimes())
+        {
+            CreatureData const* data = sObjectMgr->GetCreatureData(pair.first);
+            if (!data)
+                continue;
+
+            CreatureTemplate const* cTemplate = sObjectMgr->GetCreatureTemplate(data->id1);
+            std::string name = cTemplate ? cTemplate->Name : "Unknown";
+            time_t remaining = pair.second > now ? pair.second - now : 0;
+            handler->PSendSysMessage(LANG_LIST_RESPAWNS_CREATURE_ENTRY, pair.first, name, data->id1, remaining);
+            ++count;
+            if (count >= 50)
+            {
+                handler->SendSysMessage(LANG_LIST_RESPAWNS_LIMIT);
+                break;
+            }
+        }
+
+        count = 0;
+        handler->SendSysMessage(LANG_LIST_RESPAWNS_GO_HEADER);
+        for (auto const& pair : map->GetGORespawnTimes())
+        {
+            GameObjectData const* data = sObjectMgr->GetGameObjectData(pair.first);
+            if (!data)
+                continue;
+
+            GameObjectTemplate const* goTemplate = sObjectMgr->GetGameObjectTemplate(data->id);
+            std::string name = goTemplate ? goTemplate->name : "Unknown";
+            time_t remaining = pair.second > now ? pair.second - now : 0;
+            handler->PSendSysMessage(LANG_LIST_RESPAWNS_GO_ENTRY, pair.first, name, data->id, remaining);
+            ++count;
+            if (count >= 50)
+            {
+                handler->SendSysMessage(LANG_LIST_RESPAWNS_LIMIT);
+                break;
+            }
         }
 
         return true;
